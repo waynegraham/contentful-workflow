@@ -7,7 +7,9 @@
     "validate": "node src/import-cli.mjs validate",
     "dry-run": "node src/import-cli.mjs dry-run",
     "apply": "node src/import-cli.mjs apply",
-    "humanize-reports": "node src/humanize-reports.mjs"
+    "humanize-reports": "node src/humanize-reports.mjs",
+    "export-iiif": "node src/export-iiif-cli.mjs",
+    "export-iiif:full": "node src/export-iiif-cli.mjs --mode full"
   },
   "dependencies": {
     "contentful-management": "^11.57.0",

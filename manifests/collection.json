@@ -1,0 +1,19 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "collection.json",
+  "type": "Collection",
+  "label": {
+    "en": [
+      "AlMadar Collection"
+    ],
+    "ar": [
+      "AlMadar Collection (AR)"
+    ]
+  },
+  "items": [
+    {
+      "id": "G2-01-0198.json",
+      "type": "Manifest"
+    }
+  ]
+}

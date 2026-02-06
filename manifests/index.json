@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-02-06T19:33:51.734Z",
+  "mode": "incremental",
+  "spaceId": "t7x0vaz0zty0",
+  "environmentId": "master",
+  "contentTypeId": "alMadarCsv",
+  "manifests": {
+    "G2-01-0198": {
+      "fileName": "G2-01-0198.json",
+      "id": "G2-01-0198.json",
+      "updatedAt": "2026-02-01T14:17:36.915Z"
+    }
+  },
+  "collection": {
+    "fileName": "collection.json",
+    "id": "collection.json"
+  }
+}

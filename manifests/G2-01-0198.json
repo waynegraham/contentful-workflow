@@ -1,0 +1,266 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "G2-01-0198.json",
+  "type": "Manifest",
+  "label": {
+    "en": [
+      "Interior textiles of the Ka‘bah"
+    ],
+    "ar": [
+      "المنسوجات الداخلية للكعبة"
+    ]
+  },
+  "summary": {
+    "en": [
+      "## The Inner Sanctuary\n\nThese two kiswah panels once adorned the interior walls and pillars of the Ka‘bah. Unlike the exterior kiswah of the Ka‘bah, which was previously produced in Egypt and sent annually with the Hajj caravan, kiswahs made for the Ka‘bah’s interior were renewed periodically, at times upon the accession of a new ruler. <sup>22</sup>\n\nFrom at least the 10th century AH/16th century CE, a kiswah was sent not only for the interior walls of the Ka‘bah but also for the three pillars in the center of the building, which an Ottoman register issued early in the reign of Selim II (AH 974–82/1566–74 CE) names as: “Hannan (Merciful), Mannan (Benefactor), and Dayyan (Recompenser).”23 Significantly, kiswahs for the Ka‘bah’s interior dating from at least the 12th century AH/18th century CE—including the piece displayed here—featured the first two of these names. <sup>24</sup>\n\nWhilst 10th-century AH/16th-century CE examples closely resembled the exterior kiswah in terms of both weaving patterns and inscriptions, the interior kiswah took on its own character over the next four centuries.25 Like the kiswah on display, they featured a characteristic zigzag or chevron pattern in cream or yellow on a red background. The piece displayed here also has a narrow band of calligraphy featuring a verse from the Holy Qur’an, chapter Al-Baqarah (2:144), which commands believers to turn towards the Ka‘bah as the new direction of prayer (qiblah)."
+    ],
+    "ar": [
+      "## الحرم الداخلي\n\nكانت لوحتا الكسوة هاتان تزينان الجدران والأعمدة الداخلية للكعبة. وعلى عكس الكسوة الخارجية للكعبة، التي كانت تُصنع سابقًا في مصر وتُرسل سنويًا مع قافلة الحج، كانت الكسوات المصنوعة للجزء الداخلي من الكعبة تُجدد دوريًا، وأحيانًا عند تولي حاكم جديد الحكم. ٢٢\n\nمنذ القرن العاشر الهجري/القرن السادس عشر الميلادي على الأقل، لم تكن تُرسل كسوة للكعبة فحسب، بل أيضًا للأعمدة الثلاثة في وسطها، والتي ورد ذكرها في سجل عثماني صدر في مطلع عهد سليم الثاني (٩٧٤-٩٨٢ هـ/١٥٦٦-١٥٧٤ م) على النحو التالي: \"حنان (الرحيم)، ومنان (المحسن)، وديان (المجازي)\".٢٣ والجدير بالذكر أن كسوات الجزء الداخلي من الكعبة، والتي يعود تاريخها إلى القرن الثاني عشر الهجري/القرن الثامن عشر الميلادي على الأقل - بما في ذلك القطعة المعروضة هنا - تضمنت الاسمين الأولين. ٢٤\n\nبينما تشابهت نماذج الكسوة الخارجية التي تعود إلى القرن العاشر الهجري/القرن السادس عشر الميلادي تشابهاً كبيراً من حيث أنماط النسيج والنقوش، فقد اكتسبت الكسوة الداخلية طابعها الخاص على مدى القرون الأربعة التالية.٢٥ وكما هو الحال في الكسوة المعروضة، فقد تميزت بنمط متعرج أو على شكل حرف V باللون الكريمي أو الأصفر على خلفية حمراء. وتحتوي القطعة المعروضة هنا أيضاً على شريط ضيق من الخط العربي يحمل آية من القرآن الكريم، سورة البقرة (٢:١٤٤)، التي تأمر المؤمنين بالتوجه نحو الكعبة المشرفة كقبلة جديدة للصلاة."
+    ]
+  },
+  "provider": [
+    {
+      "id": "providers/G2-01-0198",
+      "type": "Agent",
+      "label": {
+        "en": [
+          "National Museum of Asian Art (Washington, D.C., United States)"
+        ],
+        "ar": [
+          "المتحف الوطني للفنون الآسيوية (واشنطن العاصمة، الولايات المتحدة الأمريكية)"
+        ]
+      }
+    }
+  ],
+  "metadata": [
+    {
+      "label": {
+        "en": [
+          "IAB Code"
+        ],
+        "ar": [
+          "IAB Code (AR)"
+        ]
+      },
+      "value": {
+        "en": [
+          "G2-01-0198"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Origin"
+        ]
+      },
+      "value": {
+        "en": [
+          "Likely Bursa, Türkiye"
+        ],
+        "ar": [
+          "من المحتمل أن تكون بورصة، تركيا"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Hijri Date"
+        ]
+      },
+      "value": {
+        "en": [
+          "12th–13th centuries"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Gregorian Date"
+        ]
+      },
+      "value": {
+        "en": [
+          "18th–19th centuries"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Material"
+        ]
+      },
+      "value": {
+        "en": [
+          "Silk-satin; Lampas Weave"
+        ],
+        "ar": [
+          "حرير ساتان; نسيج لامباس"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Dimension"
+        ]
+      },
+      "value": {
+        "en": [
+          "Each textile: h. 189.5 x w. 67.3 cm"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Category"
+        ]
+      },
+      "value": {
+        "en": [
+          "Object"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Footnotes"
+        ]
+      },
+      "value": {
+        "en": [
+          "22.The Ottoman chronicler Ayyub Sabri Pasha (d. AH 1308/1890 CE) relates that the coverings for the Ka‘bah and the Rawdhah, as well as various other fabrics for the sacred sites of Al-Madinah al-Munawwarah, were renewed every fifteen years. See: Sabri Pasha, Mir’âtü’l-Harameyn: Harameyn Tarihi, 2:1024–25.\n\n23.Başbakanlık Osmanlı Arşivi (Ottoman State Archives, Istanbul), Mühimme Register 7, decree 893 (AH 975–76/1567–69 CE).\n\n24.See: Hülya Tezcan, Sacred Covers of Islam’s Holy Shrines: With Samples from Topkapi Palace (Masa, 2017), 64–66.\n\n25.See: Tezcan, Sacred Covers, 64–66."
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Institution Ref No"
+        ]
+      },
+      "value": {
+        "en": [
+          "S1996.62.1–2"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Loaning Nation"
+        ]
+      },
+      "value": {
+        "en": [
+          "United States of America"
+        ],
+        "ar": [
+          "الولايات المتحدة الأمريكية"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Credit Line"
+        ]
+      },
+      "value": {
+        "en": [
+          "National Museum of Asian Art, S1996.62.1–2"
+        ],
+        "ar": [
+          "المتحف الوطني للفنون الآسيوية، S1996.62.1–2"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Image Credit"
+        ]
+      },
+      "value": {
+        "en": [
+          "Primary image: © Mohammed Eskandrani\n\nAdditional image: © National Museum of Asian Art\n\nGallery image: Courtesy of the Diriyah Biennale Foundation, photo: Marco Cappelletti"
+        ],
+        "ar": [
+          "الصورة الرئيسية: © محمد إسكندراني\n\nصورة إضافية: © المتحف الوطني للفنون الآسيوية\n\nصورة المعرض: بإذن من مؤسسة بينالي الدرعية، تصوير: ماركو كابيلليتي"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Curator"
+        ]
+      },
+      "value": {
+        "en": [
+          "Dr. Julian Raby"
+        ],
+        "ar": [
+          "د. جوليان رابي"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Writers"
+        ]
+      },
+      "value": {
+        "en": [
+          "Dr. Yahya Nurgat"
+        ],
+        "ar": [
+          "د. يحيى نورغات"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Gallery"
+        ]
+      },
+      "value": {
+        "en": [
+          "Gallery 2"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Gallery Presentation No"
+        ]
+      },
+      "value": {
+        "en": [
+          "G2-01"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Section"
+        ]
+      },
+      "value": {
+        "en": [
+          "AlBidayah"
+        ]
+      }
+    }
+  ],
+  "items": []
+}

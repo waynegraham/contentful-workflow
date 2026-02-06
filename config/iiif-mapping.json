@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "outputDir": "manifests",
+  "idField": "iabCode",
+  "localeAliases": {
+    "en-US": "en",
+    "ar": "ar"
+  },
+  "collection": {
+    "id": "collection.json",
+    "fileName": "collection.json",
+    "label": {
+      "en-US": "AlMadar Collection",
+      "ar": "AlMadar Collection (AR)"
+    }
+  },
+  "fields": {
+    "label": "title",
+    "summary": "description",
+    "provider": "lendingInstitution"
+  },
+  "metadata": [
+    {
+      "fieldId": "iabCode",
+      "label": {
+        "en-US": "IAB Code",
+        "ar": "IAB Code (AR)"
+      }
+    }
+  ]
+}

@@ -35,6 +35,8 @@ CONTENTFUL_SPACE_ID=xxxxxxx
 CONTENTFUL_ENV_ID=master
 CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv
 CONTENTFUL_MANAGEMENT_TOKEN=your_contentful_management_token
+CONTENTFUL_DELIVERY_TOKEN=your_contentful_delivery_token
+CONTENTFUL_DELIVERY_HOST=cdn.contentful.com
 TRANSLATION_PROVIDER=ollama
 TRANSLATION_MODEL=
 OPENAI_API_KEY=your_openai_api_key
@@ -47,6 +49,7 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=translategemma:latest
 CSV_PATH=iab25-sample.csv
 MAPPING_PATH=config/almadar-mapping.json
+IIIF_MAPPING_PATH=config/iiif-mapping.json
 DEFAULT_LOCALE=en-US
 AR_LOCALE=ar
 ```
@@ -100,6 +103,25 @@ npm run humanize-reports -- --all
 npm run humanize-reports -- --all --output reports/human-readable-errors-all.md
 ```
 
+### Export IIIF (Published Content Cache)
+Exports published entries from Contentful Delivery API as IIIF Presentation API v3 manifests.
+
+```bash
+# incremental (default)
+npm run export-iiif
+
+# full rebuild
+npm run export-iiif:full
+
+# optional flags
+node src/export-iiif-cli.mjs --mode incremental --mapping config/iiif-mapping.json --output manifests
+```
+
+Output files:
+- `manifests/<iabCode>.json` (one manifest per entry)
+- `manifests/collection.json` (collection manifest)
+- `manifests/index.json` (incremental cache index)
+
 ### Progress Output
 - `--progress=auto` (default): live progress in TTY, periodic logs in non-TTY
 - `--progress=on`: force live progress rendering
@@ -133,6 +155,15 @@ Mapping is stored in:
 
 Use this file to add new CSV->Contentful field mappings without changing importer code.
 
+IIIF mapping is stored in:
+- `config/iiif-mapping.json`
+
+Default IIIF field mapping:
+- `label` -> `title`
+- `summary` -> `description`
+- `provider` -> `lendingInstitution`
+- manifest filename key -> `iabCode`
+
 ## Reports
 Each `dry-run` and `apply` writes:
 - `reports/import-<timestamp>.json`
@@ -154,6 +185,8 @@ Row statuses include:
 - `src/import-cli.mjs` - importer CLI implementation
 - `src/humanize-reports.mjs` - converts JSON reports into actionable markdown summaries
 - `config/almadar-mapping.json` - field mapping and import options
+- `src/export-iiif-cli.mjs` - IIIF v3 manifest exporter (published entries via CDA)
+- `config/iiif-mapping.json` - IIIF field mapping and collection metadata
 - `docs/contentful-import-spec.md` - detailed technical spec
 - `iab25-sample.csv` - sample source CSV
 
