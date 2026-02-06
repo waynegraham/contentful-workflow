@@ -1,0 +1,281 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "G3-28-0105.json",
+  "type": "Manifest",
+  "label": {
+    "en": [
+      "Fragment of a prayer carpet"
+    ],
+    "ar": [
+      "قطعة من سجادة صلاة"
+    ]
+  },
+  "summary": {
+    "en": [
+      "A waqf (endowment) might extend beyond the construction and maintenance of a religious institution to the furnishings that enhance its interior. For instance, this fragment of a carpet is believed to come from the grand Selimiye Mosque in Edirne, Tūrkiye. Designed by the master architect Sinan and built between 976 and 982 AH/1568 and 1574 CE, the mosque includes an immense prayer hall whose floor space was apparently once covered by an equally immense carpet provided by the building’s patron, the Ottoman ruler Selim II (r. 974–82 AH/ 1566–74 CE). Originally many meters in length, the carpet was later cut down into smaller sections, which have since been dispersed across museums and collections around the world.39\n\nThe carpet’s imagery of lamps suspended in a series of arched niches is a reference to chapter Al-Nur (24:35), which states, “Allah is the Light of the heavens and the earth. The parable of His Light is as (if there were) a niche and within it a lamp.”"
+    ],
+    "ar": [
+      "قد يمتد الوقف (الوصاية) إلى ما هو أبعد من إنشاء وصيانة مؤسسة دينية ليشمل الأثاث الذي يعزز تصميمها الداخلي. على سبيل المثال، يُعتقد أن هذا الجزء من السجادة ينحدر من المسجد الكبير \"سليمييه\" في إدرنة، تركيا. وقد صمم المسجد المهندس المعماري الماهر \"سينان\" وأنشأ بين عامي 976 و 982 هـ/ 1568 و 1574 م، ويضم المسجد قاعة صلاة ضخمة، وكان يُعتقد أن أرضيتها كانت مغطاة بسجادة ضخمة مماثلة، وهي تابعة للمدرب \"سليم الثاني\" (حكم من 974-82 هـ/ 1566-74 م)، وهو من المتبرعين للمسجد. كانت السجادة الأصلية بطول كبير، ولكن تم اقتطاعها لاحقًا إلى أجزاء أصغر، والتي تم توزيعها الآن في المتاحف والمجموعات في جميع أنحاء العالم.39\n\nتصوير السجادة، والذي يظهر مصابيح معلقة في سلسلة من النوافذ المقوسة، هو إشارة إلى الآية 24:35 من سورة \"النور\"، والتي تقول: \"الله هو النور في السماء والأرض. رمز نور الله هو (إذا كان هناك) نافذة، وفيها مصباح.\""
+    ]
+  },
+  "provider": [
+    {
+      "id": "providers/G3-28-0105",
+      "type": "Agent",
+      "label": {
+        "en": [
+          "King Abdulaziz Center for World Culture—Ithra (Dhahran, Saudi Arabia)"
+        ],
+        "ar": [
+          "مركز الملك عبدالعزيز الثقافي العالمي - إثراء (الظهران، المملكة العربية السعودية)"
+        ]
+      }
+    }
+  ],
+  "metadata": [
+    {
+      "label": {
+        "en": [
+          "IAB Code"
+        ],
+        "ar": [
+          "IAB Code (AR)"
+        ]
+      },
+      "value": {
+        "en": [
+          "G3-28-0105"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Origin"
+        ]
+      },
+      "value": {
+        "en": [
+          "Türkiye"
+        ],
+        "ar": [
+          "تركيا"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Hijri Date"
+        ]
+      },
+      "value": {
+        "en": [
+          "possibly second half of the 10th century AH"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Gregorian Date"
+        ]
+      },
+      "value": {
+        "en": [
+          "16th century CE"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Material"
+        ]
+      },
+      "value": {
+        "en": [
+          "Wool Pile"
+        ],
+        "ar": [
+          "فرو"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Dimension"
+        ]
+      },
+      "value": {
+        "en": [
+          "h. 144.5 × w. 73 cm"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Category"
+        ]
+      },
+      "value": {
+        "en": [
+          "Object"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Footnotes"
+        ]
+      },
+      "value": {
+        "en": [
+          "39.See: Charles Grant Ellis, “The Ottoman Prayer Rugs,” The Textile Museum Journal 2/4 (1969): 5–22; Heinrich Kirchheim, Turkish Carpets from 13th–18th Centuries (Ahmet Ertug, 1996), 163–169; and Filiz Çagman et al, Turks: A Journey of a Thousand Years: 600–1600 (Royal Academy of the Arts, 2005), 352, 354, 355 and 462 for various datings, reconstructions, and illustrations of the fragments of this carpet."
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Institution Ref No"
+        ]
+      },
+      "value": {
+        "en": [
+          "2019.0038"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Loaning Nation"
+        ]
+      },
+      "value": {
+        "en": [
+          "Saudi Arabia"
+        ],
+        "ar": [
+          "المملكة العربية السعودية"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Credit Line"
+        ]
+      },
+      "value": {
+        "en": [
+          "King Abdulaziz Center for World Culture—Ithra, Dhahran, 2019.0038"
+        ],
+        "ar": [
+          "مركز عبد العزيز العالمي للثقافة – إثرا، ذُهْران، 2019.0038"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Image Credit"
+        ]
+      },
+      "value": {
+        "en": [
+          "Primary image: © King Abdulaziz Center for World Culture/ Ithra\n\nAdditional image: © King Abdulaziz Center for World Culture/ Ithra\n\nGallery image: Courtesy of the Diriyah Biennale Foundation, photo: Marco Cappelletti"
+        ],
+        "ar": [
+          "الصورة الرئيسية: © مركز عبد العزيز للكتابة والثقافة/ إيثرا\n\nصورة إضافية: © مركز عبد العزيز للكتابة والثقافة/ إيثرا\n\nصورة المعرض: من فضل مؤسسة \"ديريا\" للفن، الصورة: ماركو كابيليتي"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Curator"
+        ]
+      },
+      "value": {
+        "en": [
+          "Dr. Marika Sardar"
+        ],
+        "ar": [
+          "د. ماريكا سردار"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Writers"
+        ]
+      },
+      "value": {
+        "en": [
+          "Dr. Marika Sardar"
+        ],
+        "ar": [
+          "د. ماريكا سردار"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Gallery"
+        ]
+      },
+      "value": {
+        "en": [
+          "Gallery 3"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Gallery Presentation No"
+        ]
+      },
+      "value": {
+        "en": [
+          "G3-28"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Section"
+        ]
+      },
+      "value": {
+        "en": [
+          "AlMadar"
+        ]
+      }
+    },
+    {
+      "label": {
+        "en": [
+          "Thematic Subsection"
+        ]
+      },
+      "value": {
+        "en": [
+          "Faith & Practice"
+        ],
+        "ar": [
+          "الإيْمانُ والإحْسَانُ"
+        ]
+      }
+    }
+  ],
+  "items": []
+}

@@ -1,10 +1,15 @@
 {
-  "generatedAt": "2026-02-06T19:33:51.734Z",
+  "generatedAt": "2026-02-06T20:12:39.678Z",
   "mode": "incremental",
   "spaceId": "t7x0vaz0zty0",
   "environmentId": "master",
   "contentTypeId": "alMadarCsv",
   "manifests": {
+    "G3-28-0105": {
+      "fileName": "G3-28-0105.json",
+      "id": "G3-28-0105.json",
+      "updatedAt": "2026-02-06T20:12:22.765Z"
+    },
     "G2-01-0198": {
       "fileName": "G2-01-0198.json",
       "id": "G2-01-0198.json",
