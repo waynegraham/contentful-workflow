@@ -13,17 +13,22 @@ const MODE_DRY_RUN = 'dry-run';
 const MODE_APPLY = 'apply';
 const MODES = new Set([MODE_VALIDATE, MODE_DRY_RUN, MODE_APPLY]);
 const SUPPORTED_TRANSLATION_PROVIDERS = new Set(['openai', 'gemini', 'claude', 'ollama']);
+const SUPPORTED_PROGRESS_MODES = new Set(['auto', 'on', 'off']);
 
 const NA_VALUES = new Set(['', 'n/a', 'na', 'null', '-']);
 
 const args = process.argv.slice(2);
 const mode = args[0];
 if (!MODES.has(mode)) {
-  console.error('Usage: node src/import-cli.mjs <validate|dry-run|apply> [--csv path] [--mapping path]');
+  console.error('Usage: node src/import-cli.mjs <validate|dry-run|apply> [--csv path] [--mapping path] [--progress auto|on|off]');
   process.exit(1);
 }
 
 const cliOptions = parseCliOptions(args.slice(1));
+if (!SUPPORTED_PROGRESS_MODES.has(cliOptions.progress)) {
+  console.error(`Invalid --progress value: ${cliOptions.progress}. Supported: auto, on, off`);
+  process.exit(1);
+}
 
 const mappingPath = cliOptions.mapping || process.env.MAPPING_PATH || 'config/almadar-mapping.json';
 const csvPath = cliOptions.csv || process.env.CSV_PATH || 'iab25-sample.csv';
@@ -79,15 +84,32 @@ main().catch((err) => {
 });
 
 async function main() {
+  const validateProgress = createValidateProgress({
+    mode,
+    progressMode: cliOptions.progress,
+    stream: process.stdout
+  });
+
+  validateProgress.start();
+  validateProgress.step('Validating environment');
   validateEnvForMode(env, mode, mapping);
+
+  validateProgress.step('Validating mapping');
   validateMappingShape(mapping);
+
+  validateProgress.step('Validating CSV headers');
   validateCsvHeaders(mapping, csvRows);
 
+  validateProgress.step('Connecting to Contentful');
   const cma = createContentfulClient(env.managementToken);
+
+  validateProgress.step('Loading content type and locales');
   const { environment, contentType, localesByCode, enumMap } = await loadContentfulContext(cma, env);
 
+  validateProgress.step('Checking locales');
   ensureLocale(localesByCode, env.defaultLocale);
   ensureLocale(localesByCode, env.arLocale);
+  validateProgress.finish('Validation checks complete');
 
   if (mode === MODE_VALIDATE) {
     console.log('Validation passed.');
@@ -96,6 +118,14 @@ async function main() {
     console.log(`Locales: ${env.defaultLocale}, ${env.arLocale}`);
     return;
   }
+
+  const rowProgress = createRowProgress({
+    mode,
+    totalRows: csvRows.length,
+    progressMode: cliOptions.progress,
+    stream: process.stdout
+  });
+  rowProgress.start();
 
   for (let i = 0; i < csvRows.length; i += 1) {
     const rowNumber = i + 2;
@@ -115,14 +145,16 @@ async function main() {
 
     summary.rows.push(status);
     summary.totals[status.status] = (summary.totals[status.status] || 0) + 1;
+    rowProgress.tick(summary.totals, status.status);
   }
+  rowProgress.finish(summary.totals);
 
   const reportPath = writeReport(summary);
   printSummary(summary, reportPath);
 }
 
 function parseCliOptions(argv) {
-  const options = {};
+  const options = { progress: 'auto' };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--csv' && argv[i + 1]) {
       options.csv = argv[i + 1];
@@ -132,9 +164,174 @@ function parseCliOptions(argv) {
     if (argv[i] === '--mapping' && argv[i + 1]) {
       options.mapping = argv[i + 1];
       i += 1;
+      continue;
+    }
+    if (argv[i].startsWith('--progress=')) {
+      options.progress = argv[i].slice('--progress='.length).toLowerCase();
+      continue;
+    }
+    if (argv[i] === '--progress' && argv[i + 1]) {
+      options.progress = String(argv[i + 1]).toLowerCase();
+      i += 1;
     }
   }
   return options;
+}
+
+function createValidateProgress({ mode, progressMode, stream }) {
+  const enabled = progressMode !== 'off';
+  const interactive = enabled && (progressMode === 'on' || (progressMode === 'auto' && stream.isTTY));
+  const spinnerFrames = ['|', '/', '-', '\\'];
+  const totalSteps = 6;
+  let currentStep = 0;
+  let spinnerIndex = 0;
+  let timer = null;
+  let lastMessage = 'Starting';
+  let hasWritten = false;
+  const clearLinePrefix = '\x1b[2K\r';
+
+  function render() {
+    if (!interactive) {
+      return;
+    }
+    const frame = spinnerFrames[spinnerIndex % spinnerFrames.length];
+    spinnerIndex += 1;
+    const label = `[${mode}] ${frame} validate ${currentStep}/${totalSteps} ${lastMessage}`;
+    stream.write(`${clearLinePrefix}${label}`);
+    hasWritten = true;
+  }
+
+  return {
+    start() {
+      if (!enabled) {
+        return;
+      }
+      if (interactive) {
+        render();
+        timer = setInterval(render, 120);
+      } else {
+        stream.write(`[${mode}] validating...\n`);
+      }
+    },
+    step(message) {
+      if (!enabled) {
+        return;
+      }
+      currentStep = Math.min(currentStep + 1, totalSteps);
+      lastMessage = message;
+      if (interactive) {
+        render();
+      }
+    },
+    finish(message) {
+      if (!enabled) {
+        return;
+      }
+      if (timer) {
+        clearInterval(timer);
+      }
+      if (interactive && hasWritten) {
+        stream.write(`${clearLinePrefix}[${mode}] ✓ validate ${totalSteps}/${totalSteps} ${message}\n`);
+      } else if (!interactive) {
+        stream.write(`[${mode}] ${message}\n`);
+      }
+    }
+  };
+}
+
+function createRowProgress({ mode, totalRows, progressMode, stream }) {
+  const enabled = progressMode !== 'off';
+  const interactive = enabled && (progressMode === 'on' || (progressMode === 'auto' && stream.isTTY));
+  const startedAt = Date.now();
+  let processedRows = 0;
+  let nextLogThreshold = 1;
+  const clearLinePrefix = '\x1b[2K\r';
+
+  function fmtDuration(ms) {
+    if (!Number.isFinite(ms) || ms < 0) {
+      return '--:--';
+    }
+    const totalSeconds = Math.round(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function buildCounts(totals) {
+    const short = [
+      `would:${totals.would_create || 0}`,
+      `created:${totals.created || 0}`,
+      `exist:${totals.skipped_existing || 0}`,
+      `req:${totals.skipped_missing_required || 0}`,
+      `enum:${totals.skipped_invalid_enum || 0}`,
+      `tr:${totals.failed_translation || 0}`,
+      `cf:${totals.failed_contentful || 0}`
+    ];
+    return short.join(' ');
+  }
+
+  function render(totals) {
+    if (!enabled || !interactive) {
+      return;
+    }
+    const total = Math.max(totalRows, 1);
+    const pct = Math.min(processedRows / total, 1);
+    const width = 24;
+    const filled = Math.round(width * pct);
+    const bar = `${'#'.repeat(filled)}${'-'.repeat(width - filled)}`;
+    const elapsedMs = Date.now() - startedAt;
+    const avgPerRow = processedRows > 0 ? elapsedMs / processedRows : 0;
+    const etaMs = (totalRows - processedRows) * avgPerRow;
+    const line = `[${mode}] [${bar}] ${processedRows}/${totalRows} ${Math.round(pct * 100)}% ETA ${fmtDuration(etaMs)} ${buildCounts(totals)}`;
+    stream.write(`${clearLinePrefix}${line}`);
+  }
+
+  function maybeLogNonInteractive(totals, lastStatus) {
+    if (!enabled || interactive) {
+      return;
+    }
+    const ratio = totalRows > 0 ? processedRows / totalRows : 1;
+    if (processedRows < nextLogThreshold && processedRows !== totalRows) {
+      return;
+    }
+    const elapsedMs = Date.now() - startedAt;
+    const avgPerRow = processedRows > 0 ? elapsedMs / processedRows : 0;
+    const etaMs = (totalRows - processedRows) * avgPerRow;
+    stream.write(
+      `[${mode}] ${processedRows}/${totalRows} ${Math.round(ratio * 100)}% eta=${fmtDuration(etaMs)} last=${lastStatus} ${buildCounts(totals)}\n`
+    );
+    nextLogThreshold = Math.max(nextLogThreshold + 25, processedRows + 1);
+  }
+
+  return {
+    start() {
+      if (!enabled) {
+        return;
+      }
+      if (interactive) {
+        render({});
+      } else {
+        stream.write(`[${mode}] processing ${totalRows} rows...\n`);
+      }
+    },
+    tick(totals, lastStatus) {
+      processedRows += 1;
+      render(totals);
+      maybeLogNonInteractive(totals, lastStatus);
+    },
+    finish(totals) {
+      if (!enabled) {
+        return;
+      }
+      processedRows = totalRows;
+      render(totals);
+      if (interactive) {
+        stream.write('\n');
+      } else {
+        stream.write(`[${mode}] done ${totalRows}/${totalRows}\n`);
+      }
+    }
+  };
 }
 
 function readJson(filePath) {

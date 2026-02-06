@@ -55,24 +55,41 @@ AR_LOCALE=ar
 
 ### Validate
 Checks mapping, CSV headers, Contentful content type, and locales.
+Shows a small live validation indicator unless progress is turned off.
 
 ```bash
 npm run validate
+
+# optional progress control
+node src/import-cli.mjs validate --progress=off
 ```
 
 ### Dry Run
 Performs full processing without writing entries.
+Shows a live status bar with rows, status counts, and ETA.
 
 ```bash
 npm run dry-run
+
+# optional progress control
+node src/import-cli.mjs dry-run --progress=auto
 ```
 
 ### Apply
 Creates missing entries as drafts.
+Shows a live status bar with rows, status counts, and ETA.
 
 ```bash
 npm run apply
+
+# optional progress control
+node src/import-cli.mjs apply --progress=on
 ```
+
+### Progress Output
+- `--progress=auto` (default): live progress in TTY, periodic logs in non-TTY
+- `--progress=on`: force live progress rendering
+- `--progress=off`: disable progress output
 
 ## Import Rules
 - Unique key: `IAB Code` (`iabCode` in Contentful)
