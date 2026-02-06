@@ -12,7 +12,7 @@ const MODE_VALIDATE = 'validate';
 const MODE_DRY_RUN = 'dry-run';
 const MODE_APPLY = 'apply';
 const MODES = new Set([MODE_VALIDATE, MODE_DRY_RUN, MODE_APPLY]);
-const SUPPORTED_TRANSLATION_PROVIDERS = new Set(['openai', 'gemini', 'claude']);
+const SUPPORTED_TRANSLATION_PROVIDERS = new Set(['openai', 'gemini', 'claude', 'ollama']);
 
 const NA_VALUES = new Set(['', 'n/a', 'na', 'null', '-']);
 
@@ -43,6 +43,7 @@ const env = {
   openaiApiKey: process.env.OPENAI_API_KEY,
   geminiApiKey: process.env.GEMINI_API_KEY,
   claudeApiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
+  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
   defaultLocale: process.env.DEFAULT_LOCALE || mapping.locales?.default || 'en-US',
   arLocale: process.env.AR_LOCALE || mapping.locales?.target || 'ar'
 };
@@ -165,11 +166,19 @@ function validateEnvForMode(currentEnv, currentMode, currentMapping) {
   }
 
   if (needsTranslation) {
-    const providerKeyName = getProviderApiKeyEnvName(currentEnv.translationProvider);
-    const providerApiKey = getProviderApiKey(currentEnv);
-    if (!providerApiKey) {
+    if (providerRequiresApiKey(currentEnv.translationProvider)) {
+      const providerKeyName = getProviderApiKeyEnvName(currentEnv.translationProvider);
+      const providerApiKey = getProviderApiKey(currentEnv);
+      if (!providerApiKey) {
+        throw new Error(
+          `${providerKeyName} is required for dry-run/apply when translateMissingArabic is enabled with provider "${currentEnv.translationProvider}".`
+        );
+      }
+    }
+
+    if (currentEnv.translationProvider === 'ollama' && !currentEnv.ollamaBaseUrl) {
       throw new Error(
-        `${providerKeyName} is required for dry-run/apply when translateMissingArabic is enabled with provider "${currentEnv.translationProvider}".`
+        'OLLAMA_BASE_URL is required for dry-run/apply when translateMissingArabic is enabled with provider "ollama".'
       );
     }
   }
@@ -301,6 +310,7 @@ async function processRow(ctx) {
     translationProvider: currentEnv.translationProvider,
     translationModel: currentEnv.translationModel,
     translationApiKey: getProviderApiKey(currentEnv),
+    ollamaBaseUrl: currentEnv.ollamaBaseUrl,
     translationCache: cache
   });
 
@@ -376,6 +386,7 @@ async function buildFields(ctx) {
     translationProvider,
     translationModel,
     translationApiKey,
+    ollamaBaseUrl,
     translationCache
   } = ctx;
 
@@ -419,6 +430,7 @@ async function buildFields(ctx) {
                   provider: translationProvider,
                   model: translationModel,
                   apiKey: translationApiKey,
+                  ollamaBaseUrl,
                   cache: translationCache
                 })
               );
@@ -430,6 +442,7 @@ async function buildFields(ctx) {
               provider: translationProvider,
               model: translationModel,
               apiKey: translationApiKey,
+              ollamaBaseUrl,
               cache: translationCache
             });
           }
@@ -544,8 +557,8 @@ function shouldTranslateAr(arValue, modeValue) {
   return !hasValue(arValue);
 }
 
-async function translateToArabic({ text, fieldId, provider, model, apiKey, cache }) {
-  if (!apiKey) {
+async function translateToArabic({ text, fieldId, provider, model, apiKey, ollamaBaseUrl, cache }) {
+  if (providerRequiresApiKey(provider) && !apiKey) {
     throw new Error(`${getProviderApiKeyEnvName(provider)} missing`);
   }
 
@@ -566,6 +579,8 @@ async function translateToArabic({ text, fieldId, provider, model, apiKey, cache
     translated = await translateWithGemini({ text: normalizedText, model, apiKey });
   } else if (provider === 'claude') {
     translated = await translateWithClaude({ text: normalizedText, model, apiKey });
+  } else if (provider === 'ollama') {
+    translated = await translateWithOllama({ text: normalizedText, model, baseUrl: ollamaBaseUrl });
   } else {
     throw new Error(`Unsupported translation provider: ${provider}`);
   }
@@ -590,11 +605,11 @@ async function translateWithOpenAI({ text, model, apiKey }) {
       input: [
         {
           role: 'system',
-          content: [{ type: 'input_text', text: translationInstruction() }]
+          content: [{ type: 'input_text', text: translationSystemInstruction() }]
         },
         {
           role: 'user',
-          content: [{ type: 'input_text', text }]
+          content: [{ type: 'input_text', text: translationUserPrompt(text) }]
         }
       ]
     })
@@ -616,12 +631,12 @@ async function translateWithGemini({ text, model, apiKey }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: translationInstruction() }]
+        parts: [{ text: translationSystemInstruction() }]
       },
       contents: [
         {
           role: 'user',
-          parts: [{ text }]
+          parts: [{ text: translationUserPrompt(text) }]
         }
       ]
     })
@@ -647,8 +662,8 @@ async function translateWithClaude({ text, model, apiKey }) {
     body: JSON.stringify({
       model,
       max_tokens: 2048,
-      system: translationInstruction(),
-      messages: [{ role: 'user', content: text }]
+      system: translationSystemInstruction(),
+      messages: [{ role: 'user', content: translationUserPrompt(text) }]
     })
   });
 
@@ -661,8 +676,40 @@ async function translateWithClaude({ text, model, apiKey }) {
   return extractClaudeText(data)?.trim() || null;
 }
 
-function translationInstruction() {
-  return 'Translate to Modern Standard Arabic. Preserve proper nouns, references, and identifiers.';
+async function translateWithOllama({ text, model, baseUrl }) {
+  const endpointBase = String(baseUrl || '').replace(/\/+$/, '');
+  if (!endpointBase) {
+    throw new Error('OLLAMA_BASE_URL missing');
+  }
+
+  const response = await fetch(`${endpointBase}/api/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      prompt: `${translationSystemInstruction()}\n\n${translationUserPrompt(text)}`
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Ollama HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  if (typeof data.response === 'string') {
+    return data.response.trim();
+  }
+  return null;
+}
+
+function translationSystemInstruction() {
+  return 'You are a professional English (en) to Arabic (ar) translator. Your goal is to accurately convey the meaning and nuances of the original English text while adhering to Arabic grammar, vocabulary, and cultural sensitives. Produce only Arabic translation, without any additional explanations or commentary.';
+}
+
+function translationUserPrompt(text) {
+  return `Translate the following: ${text}`;
 }
 
 function extractOpenAIText(responseJson) {
@@ -763,6 +810,9 @@ function getProviderApiKey(currentEnv) {
   if (currentEnv.translationProvider === 'claude') {
     return currentEnv.claudeApiKey;
   }
+  if (currentEnv.translationProvider === 'ollama') {
+    return null;
+  }
   return null;
 }
 
@@ -776,7 +826,14 @@ function getProviderApiKeyEnvName(provider) {
   if (provider === 'claude') {
     return 'CLAUDE_API_KEY';
   }
+  if (provider === 'ollama') {
+    return 'N/A';
+  }
   return 'API_KEY';
+}
+
+function providerRequiresApiKey(provider) {
+  return provider !== 'ollama';
 }
 
 function resolveTranslationModel(provider, explicitModel) {
@@ -791,6 +848,9 @@ function resolveTranslationModel(provider, explicitModel) {
   }
   if (provider === 'claude') {
     return process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest';
+  }
+  if (provider === 'ollama') {
+    return process.env.OLLAMA_MODEL || 'translategemma:latest';
   }
   return 'gpt-4.1-mini';
 }

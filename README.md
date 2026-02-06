@@ -16,7 +16,8 @@ Imports `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t
   - Space: `t7x0vaz0zty0`
   - Environment: `master`
   - Content type: `alMadarCsv`
-- One translation provider API key (required for `dry-run` and `apply` because Arabic auto-translation is enabled):
+- One translation provider configuration (required for `dry-run` and `apply` because Arabic auto-translation is enabled):
+  - Ollama local endpoint (`OLLAMA_BASE_URL`) with model pulled locally
   - OpenAI (`OPENAI_API_KEY`)
   - Gemini (`GEMINI_API_KEY`)
   - Claude/Anthropic (`CLAUDE_API_KEY` or `ANTHROPIC_API_KEY`)
@@ -34,7 +35,7 @@ CONTENTFUL_SPACE_ID=xxxxxxx
 CONTENTFUL_ENV_ID=master
 CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv
 CONTENTFUL_MANAGEMENT_TOKEN=your_contentful_management_token
-TRANSLATION_PROVIDER=openai
+TRANSLATION_PROVIDER=ollama
 TRANSLATION_MODEL=
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-4.1-mini
@@ -42,6 +43,8 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.0-flash
 CLAUDE_API_KEY=
 CLAUDE_MODEL=claude-3-5-haiku-latest
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=translategemma:latest
 CSV_PATH=iab25-sample.csv
 MAPPING_PATH=config/almadar-mapping.json
 DEFAULT_LOCALE=en-US
@@ -85,9 +88,10 @@ npm run apply
   - non-required localized field => error logged, row continues
 
 ## Translation Providers
-- `TRANSLATION_PROVIDER` supports: `openai`, `gemini`, `claude`
+- `TRANSLATION_PROVIDER` supports: `ollama`, `openai`, `gemini`, `claude`
 - `TRANSLATION_MODEL` optionally overrides provider default model
 - If `TRANSLATION_MODEL` is empty, defaults are:
+  - `ollama` -> `translategemma:latest`
   - `openai` -> `gpt-4.1-mini`
   - `gemini` -> `gemini-2.0-flash`
   - `claude` -> `claude-3-5-haiku-latest`
@@ -128,7 +132,7 @@ Row statuses include:
 
 - `Missing required env/config values`:
 - verify `.env` includes all required variables from `.env.example`.
-- ensure `CONTENTFUL_MANAGEMENT_TOKEN` and the provider API key are not empty.
+- ensure `CONTENTFUL_MANAGEMENT_TOKEN` and provider auth config are present (`OLLAMA_BASE_URL` for ollama, API key for hosted providers).
 
 - Contentful auth errors (`401`/`403`):
 - confirm the PAT is a Content Management API token.
@@ -152,7 +156,8 @@ Row statuses include:
 
 - Translation API errors / rate limits:
 - verify provider API key is valid and has quota.
-- verify `TRANSLATION_PROVIDER` is one of `openai`, `gemini`, `claude`.
+- verify `TRANSLATION_PROVIDER` is one of `ollama`, `openai`, `gemini`, `claude`.
+- for Ollama, ensure daemon is running and model is installed: `ollama pull translategemma:latest`.
 - retry the run; non-required localized translation failures are logged and rows continue.
 
 - `apply` created nothing:
