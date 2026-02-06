@@ -6,7 +6,8 @@
   "scripts": {
     "validate": "node src/import-cli.mjs validate",
     "dry-run": "node src/import-cli.mjs dry-run",
-    "apply": "node src/import-cli.mjs apply"
+    "apply": "node src/import-cli.mjs apply",
+    "humanize-reports": "node src/humanize-reports.mjs"
   },
   "dependencies": {
     "contentful-management": "^11.57.0",

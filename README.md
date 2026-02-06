@@ -86,6 +86,20 @@ npm run apply
 node src/import-cli.mjs apply --progress=on
 ```
 
+### Humanize Reports
+Builds a markdown summary focused on actionable errors from generated JSON reports.
+
+```bash
+# default: latest import report only
+npm run humanize-reports
+
+# include all import reports
+npm run humanize-reports -- --all
+
+# optional custom output path
+npm run humanize-reports -- --all --output reports/human-readable-errors-all.md
+```
+
 ### Progress Output
 - `--progress=auto` (default): live progress in TTY, periodic logs in non-TTY
 - `--progress=on`: force live progress rendering
@@ -123,6 +137,10 @@ Use this file to add new CSV->Contentful field mappings without changing importe
 Each `dry-run` and `apply` writes:
 - `reports/import-<timestamp>.json`
 
+Human-readable error summaries:
+- `npm run humanize-reports` writes `reports/human-readable-errors.md` from the latest `import-*.json` file
+- `npm run humanize-reports -- --all` includes all `import-*.json` files
+
 Row statuses include:
 - `would_create`
 - `created`
@@ -134,6 +152,7 @@ Row statuses include:
 
 ## Project Files
 - `src/import-cli.mjs` - importer CLI implementation
+- `src/humanize-reports.mjs` - converts JSON reports into actionable markdown summaries
 - `config/almadar-mapping.json` - field mapping and import options
 - `docs/contentful-import-spec.md` - detailed technical spec
 - `iab25-sample.csv` - sample source CSV
