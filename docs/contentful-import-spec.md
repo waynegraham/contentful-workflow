@@ -36,7 +36,7 @@ Import `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t7
 10. Emit report (`json` + optional `csv`) with row outcomes.
 
 ## 4. Translation Policy
-- Provider: OpenAI API.
+- Provider: configurable (`openai`, `gemini`, `claude`).
 - Trigger: localized field has `en-US` value and `ar` value is empty after checking mapped AR column.
 - Output: Modern Standard Arabic, preserve proper nouns and codes (e.g. `IAB Code`, institution refs).
 - Caching: translation cache keyed by (`fieldId`, English text hash) to reduce API calls and ensure consistency.
@@ -65,7 +65,7 @@ For every row, record:
 - validation errors,
 - Contentful entry ID when created.
 
-## 7. Contentful + OpenAI Setup
+## 7. Contentful + Translation API Setup
 Create a `.env` file with:
 
 ```env
@@ -73,7 +73,11 @@ CONTENTFUL_SPACE_ID=t7x0vaz0zty0
 CONTENTFUL_ENV_ID=master
 CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv
 CONTENTFUL_MANAGEMENT_TOKEN=<contentful_pat>
+TRANSLATION_PROVIDER=openai
+TRANSLATION_MODEL=
 OPENAI_API_KEY=<openai_api_key>
+GEMINI_API_KEY=<gemini_api_key>
+CLAUDE_API_KEY=<claude_api_key>
 CSV_PATH=iab25-sample.csv
 MAPPING_PATH=config/almadar-mapping.json
 DEFAULT_LOCALE=en-US

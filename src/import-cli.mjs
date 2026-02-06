@@ -12,6 +12,7 @@ const MODE_VALIDATE = 'validate';
 const MODE_DRY_RUN = 'dry-run';
 const MODE_APPLY = 'apply';
 const MODES = new Set([MODE_VALIDATE, MODE_DRY_RUN, MODE_APPLY]);
+const SUPPORTED_TRANSLATION_PROVIDERS = new Set(['openai', 'gemini', 'claude']);
 
 const NA_VALUES = new Set(['', 'n/a', 'na', 'null', '-']);
 
@@ -35,16 +36,26 @@ const env = {
   envId: process.env.CONTENTFUL_ENV_ID || mapping.environmentId || 'master',
   contentTypeId: process.env.CONTENTFUL_CONTENT_TYPE_ID || mapping.contentTypeId,
   managementToken: process.env.CONTENTFUL_MANAGEMENT_TOKEN,
+  translationProvider: String(
+    process.env.TRANSLATION_PROVIDER || mapping.options?.translationProvider || 'openai'
+  ).toLowerCase(),
+  translationModel: process.env.TRANSLATION_MODEL || mapping.options?.translationModel || null,
   openaiApiKey: process.env.OPENAI_API_KEY,
-  openaiModel: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  claudeApiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
   defaultLocale: process.env.DEFAULT_LOCALE || mapping.locales?.default || 'en-US',
   arLocale: process.env.AR_LOCALE || mapping.locales?.target || 'ar'
 };
+env.translationModel = resolveTranslationModel(env.translationProvider, env.translationModel);
 
 const summary = {
   mode,
   csvPath,
   mappingPath,
+  translation: {
+    provider: env.translationProvider,
+    model: env.translationModel
+  },
   totals: {
     rows: csvRows.length,
     created: 0,
@@ -147,8 +158,20 @@ function validateEnvForMode(currentEnv, currentMode, currentMapping) {
   }
 
   const needsTranslation = currentMode !== MODE_VALIDATE && currentMapping.options?.translateMissingArabic;
-  if (needsTranslation && !currentEnv.openaiApiKey) {
-    throw new Error('OPENAI_API_KEY is required for dry-run/apply when translateMissingArabic is enabled.');
+  if (!SUPPORTED_TRANSLATION_PROVIDERS.has(currentEnv.translationProvider)) {
+    throw new Error(
+      `Unsupported TRANSLATION_PROVIDER: ${currentEnv.translationProvider}. Supported: ${Array.from(SUPPORTED_TRANSLATION_PROVIDERS).join(', ')}`
+    );
+  }
+
+  if (needsTranslation) {
+    const providerKeyName = getProviderApiKeyEnvName(currentEnv.translationProvider);
+    const providerApiKey = getProviderApiKey(currentEnv);
+    if (!providerApiKey) {
+      throw new Error(
+        `${providerKeyName} is required for dry-run/apply when translateMissingArabic is enabled with provider "${currentEnv.translationProvider}".`
+      );
+    }
   }
 }
 
@@ -275,8 +298,9 @@ async function processRow(ctx) {
     enumMap,
     defaultLocale: currentEnv.defaultLocale,
     arLocale: currentEnv.arLocale,
-    openaiApiKey: currentEnv.openaiApiKey,
-    openaiModel: currentEnv.openaiModel,
+    translationProvider: currentEnv.translationProvider,
+    translationModel: currentEnv.translationModel,
+    translationApiKey: getProviderApiKey(currentEnv),
     translationCache: cache
   });
 
@@ -349,8 +373,9 @@ async function buildFields(ctx) {
     enumMap,
     defaultLocale,
     arLocale,
-    openaiApiKey,
-    openaiModel,
+    translationProvider,
+    translationModel,
+    translationApiKey,
     translationCache
   } = ctx;
 
@@ -387,10 +412,26 @@ async function buildFields(ctx) {
             arValue = [];
             for (const item of enValue) {
               // Translate array items separately for better glossary reuse.
-              arValue.push(await translateToArabic(item, fieldMap.fieldId, openaiApiKey, openaiModel, translationCache));
+              arValue.push(
+                await translateToArabic({
+                  text: item,
+                  fieldId: fieldMap.fieldId,
+                  provider: translationProvider,
+                  model: translationModel,
+                  apiKey: translationApiKey,
+                  cache: translationCache
+                })
+              );
             }
           } else {
-            arValue = await translateToArabic(enValue, fieldMap.fieldId, openaiApiKey, openaiModel, translationCache);
+            arValue = await translateToArabic({
+              text: enValue,
+              fieldId: fieldMap.fieldId,
+              provider: translationProvider,
+              model: translationModel,
+              apiKey: translationApiKey,
+              cache: translationCache
+            });
           }
         } catch (error) {
           const required = requiredFieldIds.has(fieldMap.fieldId);
@@ -503,9 +544,9 @@ function shouldTranslateAr(arValue, modeValue) {
   return !hasValue(arValue);
 }
 
-async function translateToArabic(text, fieldId, apiKey, model, cache) {
+async function translateToArabic({ text, fieldId, provider, model, apiKey, cache }) {
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY missing');
+    throw new Error(`${getProviderApiKeyEnvName(provider)} missing`);
   }
 
   const normalizedText = String(text).trim();
@@ -513,11 +554,31 @@ async function translateToArabic(text, fieldId, apiKey, model, cache) {
     return null;
   }
 
-  const cacheKey = hash(`${fieldId}::${normalizedText}`);
+  const cacheKey = hash(`${provider}::${model}::${fieldId}::${normalizedText}`);
   if (cache.has(cacheKey)) {
     return cache.get(cacheKey);
   }
 
+  let translated = null;
+  if (provider === 'openai') {
+    translated = await translateWithOpenAI({ text: normalizedText, model, apiKey });
+  } else if (provider === 'gemini') {
+    translated = await translateWithGemini({ text: normalizedText, model, apiKey });
+  } else if (provider === 'claude') {
+    translated = await translateWithClaude({ text: normalizedText, model, apiKey });
+  } else {
+    throw new Error(`Unsupported translation provider: ${provider}`);
+  }
+
+  if (!translated) {
+    throw new Error(`${provider} returned empty translation output`);
+  }
+
+  cache.set(cacheKey, translated);
+  return translated;
+}
+
+async function translateWithOpenAI({ text, model, apiKey }) {
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -529,11 +590,11 @@ async function translateToArabic(text, fieldId, apiKey, model, cache) {
       input: [
         {
           role: 'system',
-          content: [{ type: 'input_text', text: 'Translate to Modern Standard Arabic. Preserve proper nouns, references, and identifiers.' }]
+          content: [{ type: 'input_text', text: translationInstruction() }]
         },
         {
           role: 'user',
-          content: [{ type: 'input_text', text: normalizedText }]
+          content: [{ type: 'input_text', text }]
         }
       ]
     })
@@ -545,16 +606,66 @@ async function translateToArabic(text, fieldId, apiKey, model, cache) {
   }
 
   const data = await response.json();
-  const translated = extractText(data)?.trim();
-  if (!translated) {
-    throw new Error('OpenAI returned empty translation output');
-  }
-
-  cache.set(cacheKey, translated);
-  return translated;
+  return extractOpenAIText(data)?.trim() || null;
 }
 
-function extractText(responseJson) {
+async function translateWithGemini({ text, model, apiKey }) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: translationInstruction() }]
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text }]
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return extractGeminiText(data)?.trim() || null;
+}
+
+async function translateWithClaude({ text, model, apiKey }) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 2048,
+      system: translationInstruction(),
+      messages: [{ role: 'user', content: text }]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Claude HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return extractClaudeText(data)?.trim() || null;
+}
+
+function translationInstruction() {
+  return 'Translate to Modern Standard Arabic. Preserve proper nouns, references, and identifiers.';
+}
+
+function extractOpenAIText(responseJson) {
   if (typeof responseJson.output_text === 'string') {
     return responseJson.output_text;
   }
@@ -567,6 +678,26 @@ function extractText(responseJson) {
     }
   }
 
+  return null;
+}
+
+function extractGeminiText(responseJson) {
+  for (const candidate of responseJson.candidates || []) {
+    for (const part of candidate.content?.parts || []) {
+      if (typeof part.text === 'string') {
+        return part.text;
+      }
+    }
+  }
+  return null;
+}
+
+function extractClaudeText(responseJson) {
+  for (const item of responseJson.content || []) {
+    if (item.type === 'text' && typeof item.text === 'string') {
+      return item.text;
+    }
+  }
   return null;
 }
 
@@ -606,6 +737,7 @@ function writeReport(currentSummary) {
 
 function printSummary(currentSummary, reportPath) {
   console.log(`Mode: ${currentSummary.mode}`);
+  console.log(`Translation provider/model: ${currentSummary.translation.provider}/${currentSummary.translation.model}`);
   console.log(`Rows: ${currentSummary.totals.rows}`);
   console.log(`Would create: ${currentSummary.totals.would_create}`);
   console.log(`Created: ${currentSummary.totals.created}`);
@@ -619,6 +751,48 @@ function printSummary(currentSummary, reportPath) {
 
 function hash(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function getProviderApiKey(currentEnv) {
+  if (currentEnv.translationProvider === 'openai') {
+    return currentEnv.openaiApiKey;
+  }
+  if (currentEnv.translationProvider === 'gemini') {
+    return currentEnv.geminiApiKey;
+  }
+  if (currentEnv.translationProvider === 'claude') {
+    return currentEnv.claudeApiKey;
+  }
+  return null;
+}
+
+function getProviderApiKeyEnvName(provider) {
+  if (provider === 'openai') {
+    return 'OPENAI_API_KEY';
+  }
+  if (provider === 'gemini') {
+    return 'GEMINI_API_KEY';
+  }
+  if (provider === 'claude') {
+    return 'CLAUDE_API_KEY';
+  }
+  return 'API_KEY';
+}
+
+function resolveTranslationModel(provider, explicitModel) {
+  if (explicitModel) {
+    return explicitModel;
+  }
+  if (provider === 'openai') {
+    return process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+  }
+  if (provider === 'gemini') {
+    return process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  }
+  if (provider === 'claude') {
+    return process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest';
+  }
+  return 'gpt-4.1-mini';
 }
 
 function findDuplicates(values) {

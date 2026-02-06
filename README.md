@@ -6,7 +6,7 @@ Imports `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t
 - Inserts missing entries only (idempotent by `IAB Code` -> `iabCode`)
 - Leaves created entries as drafts (no publish)
 - Validates required fields and enum constraints
-- Auto-fills missing Arabic localized fields via OpenAI translation
+- Auto-fills missing Arabic localized fields via the configured translation provider
 - Defers non-text/media fields
 - Produces per-run JSON reports in `reports/`
 
@@ -16,7 +16,10 @@ Imports `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t
   - Space: `t7x0vaz0zty0`
   - Environment: `master`
   - Content type: `alMadarCsv`
-- OpenAI API key (required for `dry-run` and `apply` because Arabic auto-translation is enabled)
+- One translation provider API key (required for `dry-run` and `apply` because Arabic auto-translation is enabled):
+  - OpenAI (`OPENAI_API_KEY`)
+  - Gemini (`GEMINI_API_KEY`)
+  - Claude/Anthropic (`CLAUDE_API_KEY` or `ANTHROPIC_API_KEY`)
 
 ## Install
 ```bash
@@ -31,8 +34,14 @@ CONTENTFUL_SPACE_ID=xxxxxxx
 CONTENTFUL_ENV_ID=master
 CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv
 CONTENTFUL_MANAGEMENT_TOKEN=your_contentful_management_token
+TRANSLATION_PROVIDER=openai
+TRANSLATION_MODEL=
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-4.1-mini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash
+CLAUDE_API_KEY=
+CLAUDE_MODEL=claude-3-5-haiku-latest
 CSV_PATH=iab25-sample.csv
 MAPPING_PATH=config/almadar-mapping.json
 DEFAULT_LOCALE=en-US
@@ -75,6 +84,14 @@ npm run apply
   - required localized field (`title`, `description`) => row fails
   - non-required localized field => error logged, row continues
 
+## Translation Providers
+- `TRANSLATION_PROVIDER` supports: `openai`, `gemini`, `claude`
+- `TRANSLATION_MODEL` optionally overrides provider default model
+- If `TRANSLATION_MODEL` is empty, defaults are:
+  - `openai` -> `gpt-4.1-mini`
+  - `gemini` -> `gemini-2.0-flash`
+  - `claude` -> `claude-3-5-haiku-latest`
+
 ## Mapping File
 Mapping is stored in:
 - `config/almadar-mapping.json`
@@ -101,5 +118,43 @@ Row statuses include:
 - `iab25-sample.csv` - sample source CSV
 
 ## Notes
-- `validate` does not call OpenAI translation.
-- `dry-run` and `apply` call OpenAI when Arabic values are missing and translation is configured.
+- `validate` does not call translation APIs.
+- `dry-run` and `apply` call the configured translation provider when Arabic values are missing and translation is configured.
+
+## Troubleshooting
+- `npm install` hangs or fails:
+- check network access to npm registry and retry.
+- delete any partial `node_modules` directory and run `npm install` again.
+
+- `Missing required env/config values`:
+- verify `.env` includes all required variables from `.env.example`.
+- ensure `CONTENTFUL_MANAGEMENT_TOKEN` and the provider API key are not empty.
+
+- Contentful auth errors (`401`/`403`):
+- confirm the PAT is a Content Management API token.
+- confirm token has access to space `t7x0vaz0zty0` and environment `master`.
+
+- `Locale not found in Contentful environment`:
+- ensure `en-US` and `ar` locales exist in `master`.
+- confirm `DEFAULT_LOCALE` and `AR_LOCALE` match Contentful locale codes exactly.
+
+- `Field not found in content type`:
+- confirm `CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv`.
+- compare `config/almadar-mapping.json` field IDs with Contentful field IDs.
+
+- CSV header mismatch errors:
+- verify headers match mapping strings exactly (including punctuation/trailing spaces).
+- if source CSV changed, update `config/almadar-mapping.json`.
+
+- Too many rows skipped for invalid enum:
+- check CSV values for `category`, `gallery`, and `section`.
+- values must match Contentful allowed values exactly (case-sensitive).
+
+- Translation API errors / rate limits:
+- verify provider API key is valid and has quota.
+- verify `TRANSLATION_PROVIDER` is one of `openai`, `gemini`, `claude`.
+- retry the run; non-required localized translation failures are logged and rows continue.
+
+- `apply` created nothing:
+- run `dry-run` first and inspect `reports/import-<timestamp>.json`.
+- rows may be skipped as existing (`iabCode` already present) or failing validations.
