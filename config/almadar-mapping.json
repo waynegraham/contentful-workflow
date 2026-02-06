@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "spaceId": "t7x0vaz0zty0",
+  "environmentId": "master",
+  "contentTypeId": "alMadarCsv",
+  "idempotency": {
+    "uniqueFieldId": "iabCode",
+    "sourceColumn": "IAB Code",
+    "mode": "insert_missing_only"
+  },
+  "locales": {
+    "default": "en-US",
+    "target": "ar"
+  },
+  "options": {
+    "deferNonText": true,
+    "draftOnly": true,
+    "dryRun": true,
+    "translateMissingArabic": true,
+    "normalizeNA": true
+  },
+  "requiredFieldPolicy": {
+    "logMissingRequired": true,
+    "requiredFieldIds": ["iabCode", "title", "description", "section"],
+    "skipRowIfMissing": true
+  },
+  "fieldMappings": [
+    {
+      "fieldId": "iabCode",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "IAB Code" }
+    },
+    {
+      "fieldId": "title",
+      "type": "Symbol",
+      "localized": true,
+      "source": { "en-US": "Title of Object" },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "origin",
+      "type": "Symbol",
+      "localized": true,
+      "source": { "en-US": "Origin" },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "hijriDate",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Date" },
+      "transform": "parse_hijri_from_date"
+    },
+    {
+      "fieldId": "gregorianDate",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Date" },
+      "transform": "parse_gregorian_from_date"
+    },
+    {
+      "fieldId": "material",
+      "type": "Array",
+      "localized": true,
+      "source": { "en-US": "Material" },
+      "transform": "split_to_array",
+      "arrayDelimiters": [",", ";"],
+      "arrayItemCase": "title",
+      "ar": { "mode": "translate_from_en_each_item" }
+    },
+    {
+      "fieldId": "dimension",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Dimension" }
+    },
+    {
+      "fieldId": "weight",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Weight" }
+    },
+    {
+      "fieldId": "category",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Category of Work" }
+    },
+    {
+      "fieldId": "description",
+      "type": "Text",
+      "localized": true,
+      "source": { "en-US": "Description" },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "footnotes",
+      "type": "Text",
+      "localized": false,
+      "source": { "en-US": "Footnote reference" }
+    },
+    {
+      "fieldId": "manuscriptDescription",
+      "type": "Text",
+      "localized": true,
+      "source": {
+        "en-US": "Extra Manuscript Description (endowment, author, calligrapher, page layout,etc)"
+      },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "objectRelatedInformation",
+      "type": "Text",
+      "localized": true,
+      "source": {
+        "en-US": "Extra Object Related Information (maker, inscription, annotation, etc)"
+      },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "contemporaryArtworkInformation",
+      "type": "Symbol",
+      "localized": true,
+      "source": {
+        "en-US": "Extra Contemporary Artwork Information (Artist Biography for the Islamic Arts Biennale)"
+      },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "islandSpecificEssay",
+      "type": "Text",
+      "localized": false,
+      "source": { "en-US": "Island Specific Essay " }
+    },
+    {
+      "fieldId": "islandEssayFootnote",
+      "type": "Text",
+      "localized": true,
+      "source": { "en-US": "Island Essay Footnote" },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "lendingInstitution",
+      "type": "Symbol",
+      "localized": true,
+      "source": {
+        "en-US": "Lending Institution",
+        "ar": "Lending Institution (AR)"
+      },
+      "ar": { "mode": "source_then_translate_if_empty" }
+    },
+    {
+      "fieldId": "institutionRefNo",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Institution Ref. No." }
+    },
+    {
+      "fieldId": "openingFolioNoOnDisplay",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Opening Folio No. On Display" }
+    },
+    {
+      "fieldId": "loaningNation",
+      "type": "Symbol",
+      "localized": true,
+      "source": {
+        "en-US": "Loaning Nation",
+        "ar": "Loaning Nation (AR)"
+      },
+      "ar": { "mode": "source_then_translate_if_empty" }
+    },
+    {
+      "fieldId": "creditLine",
+      "type": "Symbol",
+      "localized": true,
+      "source": { "en-US": "Credit Line" },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "imageCredit",
+      "type": "Text",
+      "localized": true,
+      "source": { "en-US": "Image Credit" },
+      "ar": { "mode": "translate_from_en" }
+    },
+    {
+      "fieldId": "curator",
+      "type": "Array",
+      "localized": true,
+      "source": {
+        "en-US": "Curator(s)",
+        "ar": "Curator(s) (AR)"
+      },
+      "transform": "split_to_array",
+      "arrayDelimiters": [",", ";"],
+      "arrayItemCase": "title",
+      "ar": { "mode": "source_then_translate_if_empty_each_item" }
+    },
+    {
+      "fieldId": "writers",
+      "type": "Array",
+      "localized": true,
+      "source": {
+        "en-US": "Writer(s)",
+        "ar": "Writer(s) (AR)"
+      },
+      "transform": "split_to_array",
+      "arrayDelimiters": [",", ";"],
+      "arrayItemCase": "title",
+      "ar": { "mode": "source_then_translate_if_empty_each_item" }
+    },
+    {
+      "fieldId": "gallery",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Gallery" }
+    },
+    {
+      "fieldId": "galleryPresentationNo",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Gallery Presentation No." }
+    },
+    {
+      "fieldId": "section",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Section" }
+    },
+    {
+      "fieldId": "thematicSubsection",
+      "type": "Symbol",
+      "localized": true,
+      "source": {
+        "en-US": "AlMadar Thematic Sub-Section",
+        "ar": "AlMadar Thematic Sub-Section (AR)"
+      },
+      "ar": { "mode": "source_then_translate_if_empty" }
+    }
+  ],
+  "deferredCsvColumns": [
+    "Primary Image",
+    "Additional Images",
+    "Gallery Images",
+    "Scenographic Design & Production Images",
+    "Full Manuscript PDF/Images",
+    "Associated AV files",
+    "Related Research (documents, interviews, podcasts, etc)",
+    "Section (AR)"
+  ]
+}

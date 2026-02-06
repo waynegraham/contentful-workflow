@@ -1,0 +1,16 @@
+{
+  "name": "contentful-workflow",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node src/import-cli.mjs validate",
+    "dry-run": "node src/import-cli.mjs dry-run",
+    "apply": "node src/import-cli.mjs apply"
+  },
+  "dependencies": {
+    "contentful-management": "^11.57.0",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.5"
+  }
+}
