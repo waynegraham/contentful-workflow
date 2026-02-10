@@ -10,7 +10,8 @@
     "apply": "node src/import-cli.mjs apply",
     "humanize-reports": "node src/humanize-reports.mjs",
     "export-iiif": "node src/export-iiif-cli.mjs",
-    "export-iiif:full": "node src/export-iiif-cli.mjs --mode full"
+    "export-iiif:full": "node src/export-iiif-cli.mjs --mode full",
+    "security:osv": "bash scripts/security-osv-scan.sh"
   },
   "dependencies": {
     "contentful-management": "^11.57.0",

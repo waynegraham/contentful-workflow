@@ -247,6 +247,21 @@ Row statuses include:
 - `failed_translation`
 - `failed_contentful`
 
+## Security Scan (OSV)
+Generate a known-vulnerability report for dependency lockfiles:
+
+```bash
+npm run security:osv
+```
+
+Output:
+- `reports/osv-report.json`
+
+Notes:
+- Requires `osv-scanner` to be installed and available on your `PATH`.
+- You can pass a custom output path:
+  - `npm run security:osv -- reports/custom-osv-report.json`
+
 ## Project Files
 - `src/import-cli.mjs` - importer CLI implementation
 - `src/humanize-reports.mjs` - converts JSON reports into actionable markdown summaries

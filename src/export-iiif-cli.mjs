@@ -1,9 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { pathToFileURL } from 'node:url';
 
 const MODE_INCREMENTAL = 'incremental';
 const MODE_FULL = 'full';
@@ -11,14 +8,29 @@ const MODES = new Set([MODE_INCREMENTAL, MODE_FULL]);
 const DEFAULT_MAPPING_PATH = 'config/iiif-mapping.json';
 const DEFAULT_OUTPUT_DIR = 'manifests';
 const DEFAULT_LIMIT = 1000;
+const ALLOWED_DELIVERY_HOSTS = new Set(['cdn.contentful.com', 'preview.contentful.com']);
 
 const args = process.argv.slice(2);
 const cliOptions = parseCliOptions(args);
 const mode = cliOptions.mode || MODE_INCREMENTAL;
 
-if (!MODES.has(mode)) {
-  console.error('Usage: node src/export-iiif-cli.mjs [--mode incremental|full] [--mapping path] [--output dir] [--debug]');
-  process.exit(1);
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  await loadDotenv();
+
+  if (!MODES.has(mode)) {
+    console.error('Usage: node src/export-iiif-cli.mjs [--mode incremental|full] [--mapping path] [--output dir] [--debug]');
+    process.exit(1);
+  }
+}
+
+async function loadDotenv() {
+  try {
+    const dotenv = await import('dotenv');
+    dotenv.default?.config();
+  } catch (_error) {
+    // Ignore in test-only environments where dotenv is not installed.
+  }
 }
 
 const mappingPath = cliOptions.mapping || process.env.IIIF_MAPPING_PATH || DEFAULT_MAPPING_PATH;
@@ -32,10 +44,12 @@ const counters = {
   errors: 0
 };
 
-main().catch((error) => {
-  console.error(`Fatal: ${error.message}`);
-  process.exit(1);
-});
+if (isMain) {
+  main().catch((error) => {
+    console.error(`Fatal: ${error.message}`);
+    process.exit(1);
+  });
+}
 
 async function main() {
   const mapping = readMapping(mappingPath);
@@ -44,7 +58,7 @@ async function main() {
     environmentId: process.env.CONTENTFUL_ENV_ID || 'master',
     contentTypeId: process.env.CONTENTFUL_CONTENT_TYPE_ID,
     deliveryToken: process.env.CONTENTFUL_DELIVERY_TOKEN,
-    deliveryHost: process.env.CONTENTFUL_DELIVERY_HOST || 'cdn.contentful.com',
+    deliveryHost: validateDeliveryHost(process.env.CONTENTFUL_DELIVERY_HOST || 'cdn.contentful.com'),
     defaultLocale: process.env.DEFAULT_LOCALE || 'en-US',
     arLocale: process.env.AR_LOCALE || 'ar'
   };
@@ -231,17 +245,15 @@ async function fetchAllEntries({ spaceId, environmentId, contentTypeId, delivery
   let total = null;
 
   while (total === null || skip < total) {
-    const query = new URLSearchParams({
-      access_token: deliveryToken,
-      content_type: contentTypeId,
-      locale: '*',
-      include: '0',
-      limit: String(DEFAULT_LIMIT),
-      skip: String(skip)
+    const url = buildCdaEntriesUrl({
+      deliveryHost,
+      spaceId,
+      environmentId,
+      contentTypeId,
+      limit: DEFAULT_LIMIT,
+      skip
     });
-    const url = `https://${deliveryHost}/spaces/${encodeURIComponent(spaceId)}/environments/${encodeURIComponent(environmentId)}/entries?${query.toString()}`;
-
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: buildCdaHeaders(deliveryToken) });
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Contentful CDA HTTP ${response.status}: ${errorText}`);
@@ -458,13 +470,82 @@ function removeStaleManifests({ outputDir, nextIndex, previousIndex, collectionF
     if (!fileName || fileName === collectionFileName || fileName === 'index.json') {
       continue;
     }
-    const filePath = path.join(outputDir, fileName);
+    if (path.isAbsolute(fileName)) {
+      continue;
+    }
+    const filePath = path.resolve(outputDir, fileName);
+    if (!isPathInsideDirectory(outputDir, filePath)) {
+      continue;
+    }
     if (fs.existsSync(filePath)) {
       fs.rmSync(filePath, { force: true });
       removed += 1;
     }
   }
   return removed;
+}
+
+function validateDeliveryHost(hostValue) {
+  const normalized = String(hostValue || '').trim().toLowerCase();
+  if (!normalized) {
+    throw new Error('CONTENTFUL_DELIVERY_HOST is required');
+  }
+
+  if (
+    normalized.includes('://') ||
+    normalized.includes('/') ||
+    normalized.includes('?') ||
+    normalized.includes('#') ||
+    normalized.includes('@')
+  ) {
+    throw new Error(
+      'Invalid CONTENTFUL_DELIVERY_HOST format. Use hostname only (for example: cdn.contentful.com).'
+    );
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(`https://${normalized}`);
+  } catch {
+    throw new Error(`Invalid CONTENTFUL_DELIVERY_HOST: ${hostValue}`);
+  }
+
+  if (parsed.port) {
+    throw new Error('Invalid CONTENTFUL_DELIVERY_HOST: custom ports are not allowed.');
+  }
+
+  if (parsed.hostname !== normalized || !ALLOWED_DELIVERY_HOSTS.has(parsed.hostname)) {
+    throw new Error(
+      `Unsupported CONTENTFUL_DELIVERY_HOST: ${hostValue}. Allowed hosts: ${Array.from(ALLOWED_DELIVERY_HOSTS).join(', ')}`
+    );
+  }
+
+  return parsed.hostname;
+}
+
+function buildCdaEntriesUrl({ deliveryHost, spaceId, environmentId, contentTypeId, limit, skip }) {
+  const url = new URL(
+    `https://${deliveryHost}/spaces/${encodeURIComponent(spaceId)}/environments/${encodeURIComponent(environmentId)}/entries`
+  );
+  url.searchParams.set('content_type', contentTypeId);
+  url.searchParams.set('locale', '*');
+  url.searchParams.set('include', '0');
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('skip', String(skip));
+  return url.toString();
+}
+
+function buildCdaHeaders(deliveryToken) {
+  return {
+    Authorization: `Bearer ${deliveryToken}`
+  };
+}
+
+function isPathInsideDirectory(baseDir, targetPath) {
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedTarget = path.resolve(targetPath);
+  const relativePath = path.relative(resolvedBase, resolvedTarget);
+  return relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
 }
 
 function readJsonIfExists(filePath) {
@@ -529,3 +610,12 @@ function printSummary({ mode: currentMode, outputDir, collectionFileName, counte
   console.log(`Collection: ${path.join(outputDir, collectionFileName)}`);
   console.log(`Index: ${path.join(outputDir, 'index.json')}`);
 }
+
+export {
+  buildCdaEntriesUrl,
+  buildCdaHeaders,
+  isPathInsideDirectory,
+  parseCliOptions,
+  removeStaleManifests,
+  validateDeliveryHost
+};
