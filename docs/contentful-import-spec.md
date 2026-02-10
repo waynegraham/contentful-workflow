@@ -1,7 +1,7 @@
 # Contentful Import Spec: alMadar CSV
 
 ## 1. Goal
-Import `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t7x0vaz0zty0`, environment `master`, while:
+Import `file.csv` into Contentful content type `content_type` in space `contentful_space`, environment `master`, while:
 - creating only missing entries (skip existing `iabCode`),
 - auto-filling missing Arabic localized values using the configured translation provider,
 - leaving created entries as drafts,

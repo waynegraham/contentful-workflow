@@ -1,12 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
-import contentful from 'contentful-management';
-import { parse as parseCsv } from 'csv-parse/sync';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { pathToFileURL } from 'node:url';
 
 const MODE_VALIDATE = 'validate';
 const MODE_DRY_RUN = 'dry-run';
@@ -17,71 +12,98 @@ const SUPPORTED_PROGRESS_MODES = new Set(['auto', 'on', 'off']);
 
 const NA_VALUES = new Set(['', 'n/a', 'na', 'null', '-']);
 
-const args = process.argv.slice(2);
-const mode = args[0];
-if (!MODES.has(mode)) {
-  console.error('Usage: node src/import-cli.mjs <validate|dry-run|apply> [--csv path] [--mapping path] [--progress auto|on|off]');
-  process.exit(1);
+let mode;
+let cliOptions;
+let mappingPath;
+let csvPath;
+let mapping;
+let csvRows;
+let env;
+let summary;
+let translationCache;
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  await loadDotenv();
+  await initializeCliState(process.argv.slice(2));
+  main().catch((err) => {
+    console.error(`Fatal: ${err.message}`);
+    process.exit(1);
+  });
 }
 
-const cliOptions = parseCliOptions(args.slice(1));
-if (!SUPPORTED_PROGRESS_MODES.has(cliOptions.progress)) {
-  console.error(`Invalid --progress value: ${cliOptions.progress}. Supported: auto, on, off`);
-  process.exit(1);
+async function loadDotenv() {
+  try {
+    const dotenv = await import('dotenv');
+    dotenv.default?.config();
+  } catch (_error) {
+    // Ignore in test-only environments where dotenv is not installed.
+  }
 }
 
-const mappingPath = cliOptions.mapping || process.env.MAPPING_PATH || 'config/almadar-mapping.json';
-const csvPath = cliOptions.csv || process.env.CSV_PATH || 'iab25-sample.csv';
+async function initializeCliState(args) {
+  mode = args[0];
+  if (!MODES.has(mode)) {
+    console.error(
+      'Usage: node src/import-cli.mjs <validate|dry-run|apply> [--csv path] [--mapping path] [--progress auto|on|off]'
+    );
+    process.exit(1);
+  }
 
-const mapping = readJson(mappingPath);
-const csvRows = readCsv(csvPath);
+  cliOptions = parseCliOptions(args.slice(1));
+  if (!SUPPORTED_PROGRESS_MODES.has(cliOptions.progress)) {
+    console.error(`Invalid --progress value: ${cliOptions.progress}. Supported: auto, on, off`);
+    process.exit(1);
+  }
 
-const env = {
-  spaceId: process.env.CONTENTFUL_SPACE_ID || mapping.spaceId,
-  envId: process.env.CONTENTFUL_ENV_ID || mapping.environmentId || 'master',
-  contentTypeId: process.env.CONTENTFUL_CONTENT_TYPE_ID || mapping.contentTypeId,
-  managementToken: process.env.CONTENTFUL_MANAGEMENT_TOKEN,
-  translationProvider: String(
-    process.env.TRANSLATION_PROVIDER || mapping.options?.translationProvider || 'openai'
-  ).toLowerCase(),
-  translationModel: process.env.TRANSLATION_MODEL || mapping.options?.translationModel || null,
-  openaiApiKey: process.env.OPENAI_API_KEY,
-  geminiApiKey: process.env.GEMINI_API_KEY,
-  claudeApiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
-  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-  defaultLocale: process.env.DEFAULT_LOCALE || mapping.locales?.default || 'en-US',
-  arLocale: process.env.AR_LOCALE || mapping.locales?.target || 'ar'
-};
-env.translationModel = resolveTranslationModel(env.translationProvider, env.translationModel);
+  mappingPath = cliOptions.mapping || process.env.MAPPING_PATH || 'config/almadar-mapping.json';
+  csvPath = cliOptions.csv || process.env.CSV_PATH || 'iab25-sample.csv';
 
-const summary = {
-  mode,
-  csvPath,
-  mappingPath,
-  translation: {
-    provider: env.translationProvider,
-    model: env.translationModel
-  },
-  totals: {
-    rows: csvRows.length,
-    created: 0,
-    would_create: 0,
-    skipped_existing: 0,
-    skipped_missing_required: 0,
-    skipped_invalid_enum: 0,
-    failed_validation: 0,
-    failed_translation: 0,
-    failed_contentful: 0
-  },
-  rows: []
-};
+  mapping = readJson(mappingPath);
+  csvRows = await readCsv(csvPath);
 
-const translationCache = new Map();
+  env = {
+    spaceId: process.env.CONTENTFUL_SPACE_ID || mapping.spaceId,
+    envId: process.env.CONTENTFUL_ENV_ID || mapping.environmentId || 'master',
+    contentTypeId: process.env.CONTENTFUL_CONTENT_TYPE_ID || mapping.contentTypeId,
+    managementToken: process.env.CONTENTFUL_MANAGEMENT_TOKEN,
+    translationProvider: String(
+      process.env.TRANSLATION_PROVIDER || mapping.options?.translationProvider || 'openai'
+    ).toLowerCase(),
+    translationModel: process.env.TRANSLATION_MODEL || mapping.options?.translationModel || null,
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    claudeApiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
+    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+    defaultLocale: process.env.DEFAULT_LOCALE || mapping.locales?.default || 'en-US',
+    arLocale: process.env.AR_LOCALE || mapping.locales?.target || 'ar'
+  };
+  env.translationModel = resolveTranslationModel(env.translationProvider, env.translationModel);
 
-main().catch((err) => {
-  console.error(`Fatal: ${err.message}`);
-  process.exit(1);
-});
+  summary = {
+    mode,
+    csvPath,
+    mappingPath,
+    translation: {
+      provider: env.translationProvider,
+      model: env.translationModel
+    },
+    totals: {
+      rows: csvRows.length,
+      created: 0,
+      would_create: 0,
+      skipped_existing: 0,
+      skipped_missing_required: 0,
+      skipped_invalid_enum: 0,
+      failed_validation: 0,
+      failed_translation: 0,
+      failed_contentful: 0
+    },
+    rows: []
+  };
+
+  translationCache = new Map();
+}
 
 async function main() {
   const validateProgress = createValidateProgress({
@@ -101,7 +123,7 @@ async function main() {
   validateCsvHeaders(mapping, csvRows);
 
   validateProgress.step('Connecting to Contentful');
-  const cma = createContentfulClient(env.managementToken);
+  const cma = await createContentfulClient(env.managementToken);
 
   validateProgress.step('Loading content type and locales');
   const { environment, contentType, localesByCode, enumMap } = await loadContentfulContext(cma, env);
@@ -339,7 +361,9 @@ function readJson(filePath) {
   return JSON.parse(raw);
 }
 
-function readCsv(filePath) {
+async function readCsv(filePath) {
+  const csvParseModule = await import('csv-parse/sync');
+  const parseCsv = csvParseModule.parse;
   const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
   return parseCsv(raw, {
     columns: true,
@@ -419,8 +443,9 @@ function validateCsvHeaders(currentMapping, rows) {
   }
 }
 
-function createContentfulClient(token) {
-  return contentful.createClient({ accessToken: token });
+async function createContentfulClient(token) {
+  const contentful = await import('contentful-management');
+  return contentful.default.createClient({ accessToken: token });
 }
 
 async function loadContentfulContext(client, currentEnv) {
@@ -1063,3 +1088,19 @@ function findDuplicates(values) {
   }
   return Array.from(dupes);
 }
+
+export {
+  applyTransform,
+  findDuplicates,
+  hasValue,
+  norm,
+  normalizeDatePart,
+  parseCliOptions,
+  resolveTranslationModel,
+  shouldTranslateAr,
+  splitDateParts,
+  toTitleCase,
+  validateCsvHeaders,
+  validateEnvForMode,
+  validateMappingShape
+};
