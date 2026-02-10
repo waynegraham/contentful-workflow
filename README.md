@@ -1,6 +1,6 @@
 # Contentful Workflow Importer
 
-Imports `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t7x0vaz0zty0`.
+Imports `CSV_PATH` into Contentful content type `your_contentful_content_type_id` in space `your_contentful_space_id`.
 
 ## What It Does
 - Inserts missing entries only (idempotent by `IAB Code` -> `iabCode`)
@@ -13,9 +13,9 @@ Imports `iab25-sample.csv` into Contentful content type `alMadarCsv` in space `t
 ## Prerequisites
 - Node.js 18+
 - Contentful Management API token with access to:
-  - Space: `t7x0vaz0zty0`
+  - Space: `your_contentful_space_id`
   - Environment: `master`
-  - Content type: `alMadarCsv`
+  - Content type: `your_contentful_content_type_id`
 - One translation provider configuration (required for `dry-run` and `apply` because Arabic auto-translation is enabled):
   - Ollama local endpoint (`OLLAMA_BASE_URL`) with model pulled locally
   - OpenAI (`OPENAI_API_KEY`)
@@ -31,13 +31,17 @@ npm install
 Copy `.env.example` to `.env` and fill values:
 
 ```env
-CONTENTFUL_SPACE_ID=xxxxxxx
-CONTENTFUL_ENV_ID=master
-CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv
+# Contentful settings
+CONTENTFUL_SPACE_ID=your_contentful_space_id
+CONTENTFUL_ENV_ID=your_contentful_environment_id
+CONTENTFUL_CONTENT_TYPE_ID=your_contentful_content_type_id
 CONTENTFUL_MANAGEMENT_TOKEN=your_contentful_management_token
 CONTENTFUL_DELIVERY_TOKEN=your_contentful_delivery_token
 CONTENTFUL_DELIVERY_HOST=cdn.contentful.com
-TRANSLATION_PROVIDER=ollama
+
+# Translation model settings
+# defaults to ollama with translategemma:latest, but can be set to any provider/model combination
+TRANSLATION_PROVIDER=ollama # ollama | openai | gemini | claude
 TRANSLATION_MODEL=
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-4.1-mini
@@ -47,9 +51,11 @@ CLAUDE_API_KEY=
 CLAUDE_MODEL=claude-3-5-haiku-latest
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=translategemma:latest
-CSV_PATH=iab25-sample.csv
-MAPPING_PATH=config/almadar-mapping.json
-IIIF_MAPPING_PATH=config/iiif-mapping.json
+
+# Local settings
+CSV_PATH=your_csv_file.csv
+MAPPING_PATH=your_mapping_file.json
+IIIF_MAPPING_PATH=your_iiif_mapping_file.json
 DEFAULT_LOCALE=en-US
 AR_LOCALE=ar
 ```
