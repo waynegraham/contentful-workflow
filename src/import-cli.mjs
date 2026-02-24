@@ -708,7 +708,43 @@ async function buildFields(ctx) {
     }
   }
 
+  applyFootnoteLinking(fields, { defaultLocale, arLocale });
+
   return { fields, missingRequired, errors, enumErrors, requiredTranslationFailed };
+}
+
+function applyFootnoteLinking(fields, { defaultLocale, arLocale }) {
+  const footnotesValues = fields.footnotes;
+  const descriptionValues = fields.description;
+  if (!footnotesValues || !descriptionValues) {
+    return;
+  }
+
+  const localesToCheck = [defaultLocale, arLocale];
+  const knownFootnotes = new Set();
+
+  for (const locale of localesToCheck) {
+    const text = footnotesValues[locale];
+    if (typeof text !== 'string' || !text.trim()) {
+      continue;
+    }
+    for (const number of extractFootnoteNumbers(text)) {
+      knownFootnotes.add(number);
+    }
+    footnotesValues[locale] = formatFootnotes(text);
+  }
+
+  if (knownFootnotes.size === 0) {
+    return;
+  }
+
+  for (const locale of localesToCheck) {
+    const description = descriptionValues[locale];
+    if (typeof description !== 'string' || !description.trim()) {
+      continue;
+    }
+    descriptionValues[locale] = linkDescriptionFootnotes(description, knownFootnotes);
+  }
 }
 
 function applyTransform(input, fieldMap) {
@@ -744,6 +780,35 @@ function applyTransform(input, fieldMap) {
   }
 
   return input;
+}
+
+function extractFootnoteNumbers(text) {
+  const numbers = new Set();
+  const matcher = /(^|\n)\s*(\d+)\.\s*/gm;
+  for (const match of String(text).matchAll(matcher)) {
+    numbers.add(match[2]);
+  }
+  return numbers;
+}
+
+function formatFootnotes(text) {
+  return String(text).replace(/(^|\n)\s*(\d+)\.\s*/gm, (full, linePrefix, number) => {
+    const prefix = linePrefix || '';
+    return `${prefix}<span id="fn${number}">${number}.</span> `;
+  });
+}
+
+function linkDescriptionFootnotes(description, availableFootnotes) {
+  if (!availableFootnotes || availableFootnotes.size === 0) {
+    return description;
+  }
+
+  const sorted = Array.from(availableFootnotes).sort((a, b) => Number(b) - Number(a));
+  const numbersPattern = sorted.map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const markerPattern = new RegExp(`([.!?,;:)"'\\]»])\\s*(${numbersPattern})(?=(?:\\s|$))`, 'g');
+  return String(description).replace(markerPattern, (full, punctuation, number) => {
+    return `${punctuation}<sup><a href="#fn${number}">${number}</a></sup>`;
+  });
 }
 
 function splitDateParts(value) {
@@ -1091,8 +1156,11 @@ function findDuplicates(values) {
 
 export {
   applyTransform,
+  extractFootnoteNumbers,
   findDuplicates,
+  formatFootnotes,
   hasValue,
+  linkDescriptionFootnotes,
   norm,
   normalizeDatePart,
   parseCliOptions,
