@@ -58,6 +58,11 @@ MAPPING_PATH=your_mapping_file.json
 IIIF_MAPPING_PATH=your_iiif_mapping_file.json
 DEFAULT_LOCALE=en-US
 AR_LOCALE=ar
+
+# Airtable settings
+AIRTABLE_API_KEY=your_airtable_api_key
+AIRTABLE_BASE_ID=your_airtable_base_id
+AIRTABLE_TABLE_NAME=your_airtable_table_name
 ```
 
 ## Commands
@@ -93,6 +98,21 @@ npm run apply
 
 # optional progress control
 node src/import-cli.mjs apply --progress=on
+```
+
+### Airtable List (Source Check)
+Lists records from `AIRTABLE_TABLE_NAME` and prints these columns: `IAB Code`, `Title of Object`, `Description`.
+
+```bash
+# tab-separated output
+npm run airtable:list
+
+# JSON output
+npm run airtable:list -- --json
+
+# limit and optional view/formula
+node src/airtable-list-cli.mjs --max 100 --view "Ready for Import"
+node src/airtable-list-cli.mjs --filter-by-formula "{Ready for Import}=1"
 ```
 
 ### Humanize Reports
@@ -277,40 +297,42 @@ Notes:
 - `dry-run` and `apply` call the configured translation provider when Arabic values are missing and translation is configured.
 
 ## Troubleshooting
-- `npm install` hangs or fails:
+
+### `npm install` hangs or fails:
+
 - check network access to npm registry and retry.
 - delete any partial `node_modules` directory and run `npm install` again.
 
-- `Missing required env/config values`:
+### Missing required `env/config` values:
 - verify `.env` includes all required variables from `.env.example`.
 - ensure `CONTENTFUL_MANAGEMENT_TOKEN` and provider auth config are present (`OLLAMA_BASE_URL` for ollama, API key for hosted providers).
 
-- Contentful auth errors (`401`/`403`):
+### Contentful auth errors (`401`/`403`):
 - confirm the PAT is a Content Management API token.
 - confirm token has access to space `t7x0vaz0zty0` and environment `master`.
 
-- `Locale not found in Contentful environment`:
+### `Locale not found in Contentful environment`:
 - ensure `en-US` and `ar` locales exist in `master`.
 - confirm `DEFAULT_LOCALE` and `AR_LOCALE` match Contentful locale codes exactly.
 
-- `Field not found in content type`:
+### `Field not found in content type`:
 - confirm `CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv`.
 - compare `config/almadar-mapping.json` field IDs with Contentful field IDs.
 
-- CSV header mismatch errors:
+### CSV header mismatch errors:
 - verify headers match mapping strings exactly (including punctuation/trailing spaces).
 - if source CSV changed, update `config/almadar-mapping.json`.
 
-- Too many rows skipped for invalid enum:
+###  Too many rows skipped for invalid enum:
 - check CSV values for `category`, `gallery`, and `section`.
 - values must match Contentful allowed values exactly (case-sensitive).
 
-- Translation API errors / rate limits:
+### Translation API errors / rate limits:
 - verify provider API key is valid and has quota.
 - verify `TRANSLATION_PROVIDER` is one of `ollama`, `openai`, `gemini`, `claude`.
 - for Ollama, ensure daemon is running and model is installed: `ollama pull translategemma:latest`.
 - retry the run; non-required localized translation failures are logged and rows continue.
 
-- `apply` created nothing:
+### `apply` created nothing:
 - run `dry-run` first and inspect `reports/import-<timestamp>.json`.
 - rows may be skipped as existing (`iabCode` already present) or failing validations.
