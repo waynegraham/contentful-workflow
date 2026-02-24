@@ -8,14 +8,15 @@
     "validate": "node src/import-cli.mjs validate",
     "dry-run": "node src/import-cli.mjs dry-run",
     "apply": "node src/import-cli.mjs apply",
+    "airtable:list": "node src/airtable-list-cli.mjs",
     "humanize-reports": "node src/humanize-reports.mjs",
     "export-iiif": "node src/export-iiif-cli.mjs",
     "export-iiif:full": "node src/export-iiif-cli.mjs --mode full",
     "security:osv": "bash scripts/security-osv-scan.sh"
   },
   "dependencies": {
-    "contentful-management": "^11.57.0",
+    "contentful-management": "^11.72.1",
     "csv-parse": "^5.6.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.6.1"
   }
 }
