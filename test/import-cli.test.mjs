@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import {
   applyTransform,
+  extractFootnoteNumbers,
   findDuplicates,
+  formatFootnotes,
+  linkDescriptionFootnotes,
   norm,
   parseCliOptions,
   resolveTranslationModel,
@@ -114,4 +117,28 @@ test('findDuplicates returns each duplicated value once', () => {
 test('resolveTranslationModel uses explicit model when provided', () => {
   const model = resolveTranslationModel('openai', 'custom-model');
   assert.equal(model, 'custom-model');
+});
+
+test('extractFootnoteNumbers returns footnote ids from numbered lines', () => {
+  const numbers = extractFootnoteNumbers('39.See source one\n40. See source two');
+  assert.deepEqual(Array.from(numbers).sort(), ['39', '40']);
+});
+
+test('formatFootnotes wraps each footnote number with anchor span id', () => {
+  const formatted = formatFootnotes('39.See source one\n40. See source two');
+  assert.equal(
+    formatted,
+    '<span id="fn39">39.</span> See source one\n<span id="fn40">40.</span> See source two'
+  );
+});
+
+test('linkDescriptionFootnotes converts inline numeric markers to superscript links', () => {
+  const linked = linkDescriptionFootnotes(
+    '...around the world.39\n\nSecond sentence.',
+    new Set(['39'])
+  );
+  assert.equal(
+    linked,
+    '...around the world.<sup><a href="#fn39">39</a></sup>\n\nSecond sentence.'
+  );
 });
