@@ -1,5 +1,6 @@
 const DEFAULT_API_BASE = 'https://api.airtable.com/v0';
 const DEFAULT_FIELDS = ['IAB Code', 'Title of Object', 'Description'];
+const DEFAULT_SCHEMA_API_BASE = 'https://api.airtable.com/v0/meta';
 
 export function createAirtableClient(options = {}) {
   const apiKey = normalizeRequired(options.apiKey, 'AIRTABLE_API_KEY');
@@ -26,7 +27,12 @@ export async function listAirtableRecords(options = {}) {
   const tableName = normalizeRequired(options.tableName, 'AIRTABLE_TABLE_NAME');
   const apiBase = normalizeApiBase(options.apiBase || DEFAULT_API_BASE);
 
-  const fields = Array.isArray(options.fields) && options.fields.length > 0 ? options.fields : DEFAULT_FIELDS;
+  const fields =
+    options.fields === null
+      ? null
+      : Array.isArray(options.fields) && options.fields.length > 0
+        ? options.fields
+        : DEFAULT_FIELDS;
   const pageSize = clampInt(options.pageSize, 1, 100, 100);
   const maxRecords = clampInt(options.maxRecords, 1, Number.MAX_SAFE_INTEGER, null);
 
@@ -91,6 +97,53 @@ export async function listCatalogFields(options = {}) {
   });
 }
 
+export async function listAirtableTableFields(options = {}) {
+  const apiKey = normalizeRequired(options.apiKey, 'AIRTABLE_API_KEY');
+  const baseId = normalizeRequired(options.baseId, 'AIRTABLE_BASE_ID');
+  const tableName = normalizeRequired(options.tableName, 'AIRTABLE_TABLE_NAME');
+  const schemaApiBase = normalizeSchemaApiBase(options.schemaApiBase || DEFAULT_SCHEMA_API_BASE);
+
+  const url = buildSchemaUrl({ schemaApiBase, baseId });
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`
+    }
+  });
+
+  const payload = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(formatAirtableError(response.status, payload));
+  }
+
+  const tables = Array.isArray(payload?.tables) ? payload.tables : [];
+  const normalizedTableName = normalizeString(tableName);
+  const table = tables.find((candidate) => {
+    return normalizeString(candidate?.name) === normalizedTableName || normalizeString(candidate?.id) === normalizedTableName;
+  });
+
+  if (!table) {
+    throw new Error(`Airtable table not found in schema response: ${tableName}`);
+  }
+
+  const fields = Array.isArray(table?.fields)
+    ? table.fields
+        .map((field) => {
+          return {
+            id: normalizeOptionalString(field?.id),
+            name: normalizeOptionalString(field?.name),
+            type: normalizeOptionalString(field?.type)
+          };
+        })
+        .filter((field) => field.name)
+    : [];
+
+  if (fields.length === 0) {
+    throw new Error(`No Airtable fields were returned for table: ${tableName}`);
+  }
+
+  return fields;
+}
+
 export function parseAirtableCliOptions(argv) {
   const options = {};
 
@@ -152,8 +205,10 @@ export function buildRecordsUrl({
   const encodedPath = `${encodeURIComponent(baseId)}/${encodeURIComponent(tableName)}`;
   const url = new URL(`${trimmedBase}/${encodedPath}`);
 
-  for (const field of fields) {
-    url.searchParams.append('fields[]', field);
+  if (Array.isArray(fields)) {
+    for (const field of fields) {
+      url.searchParams.append('fields[]', field);
+    }
   }
 
   url.searchParams.set('pageSize', String(pageSize));
@@ -171,6 +226,12 @@ export function buildRecordsUrl({
   }
 
   return url.toString();
+}
+
+export function buildSchemaUrl({ schemaApiBase, baseId }) {
+  const trimmedBase = normalizeSchemaApiBase(schemaApiBase);
+  const encodedBaseId = encodeURIComponent(baseId);
+  return `${trimmedBase}/bases/${encodedBaseId}/tables`;
 }
 
 function formatAirtableError(status, payload) {
@@ -224,6 +285,26 @@ function normalizeApiBase(value) {
   return parsed.toString().replace(/\/$/, '');
 }
 
+function normalizeSchemaApiBase(value) {
+  const normalized = typeof value === 'string' ? value.trim().replace(/\/$/, '') : '';
+  if (!normalized) {
+    throw new Error('Airtable schema API base URL is required');
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new Error(`Invalid Airtable schema API base URL: ${normalized}`);
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Airtable schema API base URL must use https');
+  }
+
+  return parsed.toString().replace(/\/$/, '');
+}
+
 function clampInt(value, min, max, fallback) {
   if (value === null || value === undefined || value === '') {
     return fallback;
@@ -238,6 +319,19 @@ function clampInt(value, min, max, fallback) {
 }
 
 function normalizeValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const str = String(value).trim();
+  return str === '' ? null : str;
+}
+
+function normalizeString(value) {
+  return normalizeOptionalString(value)?.toLowerCase() || '';
+}
+
+function normalizeOptionalString(value) {
   if (value === null || value === undefined) {
     return null;
   }

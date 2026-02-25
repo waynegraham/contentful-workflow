@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "generatedAt": "2026-02-24T17:38:56.917Z",
+  "airtable": {
+    "baseId": "appO5hjmEyvDWlzOp",
+    "tableName": "tblFdQ3Z1LmM9zKZu",
+    "source": "record-scan-fallback",
+    "columns": [
+      "IAB Code",
+      "Title of Object",
+      "Date",
+      "Origin",
+      "Material",
+      "Dimension",
+      "Description",
+      "Credit Line",
+      "Footnote reference",
+      "Section",
+      "Curator(s)",
+      "Writer(s)",
+      "Extra Object Related Information (maker, inscription, annotation, etc)",
+      "Artist Biography for the Islamic Arts Biennale",
+      "Extra Manuscript Description (endowment, author, calligrapher, page layout,etc)"
+    ]
+  },
+  "contentful": {
+    "spaceId": "t7x0vaz0zty0",
+    "environmentId": "master",
+    "contentTypeId": "alMadarCsv",
+    "fields": [
+      {
+        "id": "iabCode",
+        "name": "IAB Code",
+        "type": "Symbol",
+        "localized": false,
+        "required": true
+      },
+      {
+        "id": "title",
+        "name": "Title",
+        "type": "Symbol",
+        "localized": true,
+        "required": true
+      },
+      {
+        "id": "origin",
+        "name": "Origin",
+        "type": "Symbol",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "hijriDate",
+        "name": "Hijri Date",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "gregorianDate",
+        "name": "Gregorian Date",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "material",
+        "name": "Material",
+        "type": "Array",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "dimension",
+        "name": "Dimension",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "creditLine",
+        "name": "Credit Line",
+        "type": "Symbol",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "contributorUri",
+        "name": "Contributor URI ",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "description",
+        "name": "Description",
+        "type": "Text",
+        "localized": true,
+        "required": true
+      },
+      {
+        "id": "footnotes",
+        "name": "Footnotes",
+        "type": "Text",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "manuscriptDescription",
+        "name": "Extra Manuscript Information",
+        "type": "Text",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "objectRelatedInformation",
+        "name": "Extra Object Information",
+        "type": "Text",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "inscriptions",
+        "name": "Inscriptions",
+        "type": "Text",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "contemporaryArtworkInformation",
+        "name": "Artist Biography for the Islamic Arts Biennale",
+        "type": "Symbol",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "islandSpecificEssay",
+        "name": "Island Specific Essay",
+        "type": "Text",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "islandEssayFootnote",
+        "name": "Island Essay Footnote",
+        "type": "Text",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "openingFolioNoOnDisplay",
+        "name": "Opening Folio No. On Display",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "curator",
+        "name": "Curator",
+        "type": "Array",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "writers",
+        "name": "Writers",
+        "type": "Array",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "section",
+        "name": "Section",
+        "type": "Symbol",
+        "localized": false,
+        "required": true
+      },
+      {
+        "id": "thematicSubsection",
+        "name": "AlMadar Thematic Subsection",
+        "type": "Symbol",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "imageCredit",
+        "name": "Image Credit",
+        "type": "Text",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "rightsStatement",
+        "name": "Rights Statement",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "editorialStatus",
+        "name": "Editorial Status",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "category",
+        "name": "Category",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "lendingInstitution",
+        "name": "Lending Institution",
+        "type": "Symbol",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "institutionRefNo",
+        "name": "Institution Ref. No.",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "loaningNation",
+        "name": "Loaning Nation",
+        "type": "Symbol",
+        "localized": true,
+        "required": false
+      },
+      {
+        "id": "gallery",
+        "name": "Gallery",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "galleryPresentationNo",
+        "name": "Gallery Presentation No.",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "weight",
+        "name": "Weight",
+        "type": "Symbol",
+        "localized": false,
+        "required": false
+      },
+      {
+        "id": "edition",
+        "name": "Edition",
+        "type": "Integer",
+        "localized": false,
+        "required": false
+      }
+    ]
+  },
+  "mappings": [
+    {
+      "airtableField": "IAB Code",
+      "contentfulFieldId": "iabCode",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Title of Object",
+      "contentfulFieldId": "title",
+      "confidence": "medium"
+    },
+    {
+      "airtableField": "Date",
+      "contentfulFieldId": "hijriDate",
+      "confidence": "medium"
+    },
+    {
+      "airtableField": "Origin",
+      "contentfulFieldId": "origin",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Material",
+      "contentfulFieldId": "material",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Dimension",
+      "contentfulFieldId": "dimension",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Description",
+      "contentfulFieldId": "description",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Credit Line",
+      "contentfulFieldId": "creditLine",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Footnote reference",
+      "contentfulFieldId": null,
+      "confidence": "none"
+    },
+    {
+      "airtableField": "Section",
+      "contentfulFieldId": "section",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Curator(s)",
+      "contentfulFieldId": "curator",
+      "confidence": "medium"
+    },
+    {
+      "airtableField": "Writer(s)",
+      "contentfulFieldId": "writers",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Extra Object Related Information (maker, inscription, annotation, etc)",
+      "contentfulFieldId": null,
+      "confidence": "none"
+    },
+    {
+      "airtableField": "Artist Biography for the Islamic Arts Biennale",
+      "contentfulFieldId": "contemporaryArtworkInformation",
+      "confidence": "high"
+    },
+    {
+      "airtableField": "Extra Manuscript Description (endowment, author, calligrapher, page layout,etc)",
+      "contentfulFieldId": "description",
+      "confidence": "medium"
+    }
+  ]
+}

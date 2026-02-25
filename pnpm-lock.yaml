@@ -52,8 +52,8 @@ packages:
     resolution: {integrity: sha512-tAuzk506k3pwerhy24TWIYfshouDvi60H5y18r44Fo9UWmYEcq/IfbQue7WxO9RY4L5to5hkLUE4dJtE4mBCZw==}
     engines: {node: '>=18'}
 
-  contentful-sdk-core@9.4.3:
-    resolution: {integrity: sha512-wUCrPSxOPZrmwYTPWAAe6fTQkxjElG0C3ClwhhKtguWJGzliHRXHLux9n8Hy+/jCIZJIIXWEwclSdg7bT2107A==}
+  contentful-sdk-core@9.4.4:
+    resolution: {integrity: sha512-61MfMyMU23dqCEOTHaHGys16tK2D0tbDe67GPcl6JkfbCcnhtmgTMLUbBnimW5wQse1mNmwS7lK2BNsz+rlFjA==}
     engines: {node: '>=18'}
 
   csv-parse@5.6.0:
@@ -215,13 +215,13 @@ snapshots:
     dependencies:
       '@contentful/rich-text-types': 16.8.5
       axios: 1.13.5
-      contentful-sdk-core: 9.4.3
+      contentful-sdk-core: 9.4.4
       fast-copy: 3.0.2
       globals: 15.15.0
     transitivePeerDependencies:
       - debug
 
-  contentful-sdk-core@9.4.3:
+  contentful-sdk-core@9.4.4:
     dependencies:
       fast-copy: 3.0.2
       lodash: 4.17.23

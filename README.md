@@ -115,6 +115,47 @@ node src/airtable-list-cli.mjs --max 100 --view "Ready for Import"
 node src/airtable-list-cli.mjs --filter-by-formula "{Ready for Import}=1"
 ```
 
+### Airtable -> Contentful Mapping Scaffold (Migration Step 1)
+Connects to Airtable directly, reads Airtable column names, reads Contentful content type fields, and generates a mapping scaffold you can edit while field IDs are still changing.
+
+```bash
+# writes config/airtable-contentful-map.json
+npm run airtable:map
+
+# print only to stdout
+npm run airtable:map -- --stdout-only --json
+
+# optional filters when scanning fallback records
+npm run airtable:map -- --view "Ready for Import" --sample-size 100
+```
+
+Notes:
+- Uses Airtable metadata API first to get true table schema.
+- Falls back to scanning Airtable records if metadata scope is unavailable.
+- Suggested matches are marked with `confidence` (`high`, `medium`, `none`) and should be reviewed manually.
+
+### Airtable Data Issues Check
+Scans Airtable records for data quality issues before import.
+
+Current checks:
+- `IAB Code` contains multiple values separated by commas
+- `IAB Code` contains `page` (case-insensitive)
+- `Title of Object` length exceeds 255 characters (configurable)
+
+```bash
+# console summary only
+npm run airtable:issues -- --max 200
+
+# JSON output to stdout
+npm run airtable:issues -- --max 200 --json
+
+# write JSON report file in reports/
+npm run airtable:issues -- --write-report --max 200
+
+# custom title length threshold
+npm run airtable:issues -- --title-max 255
+```
+
 ### Humanize Reports
 Builds a markdown summary focused on actionable errors from generated JSON reports.
 

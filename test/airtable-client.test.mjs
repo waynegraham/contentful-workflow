@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildSchemaUrl,
   buildRecordsUrl,
   listCatalogFields,
   parseAirtableCliOptions
@@ -44,6 +45,28 @@ test('buildRecordsUrl includes selected fields and optional filters', () => {
   assert.equal(url.includes('offset=abc'), true);
   assert.equal(url.includes('view=Ready+for+Import'), true);
   assert.equal(url.includes('filterByFormula=%7BReady+for+Import%7D%3D1'), true);
+});
+
+test('buildRecordsUrl omits fields[] when fields are null', () => {
+  const url = buildRecordsUrl({
+    apiBase: 'https://api.airtable.com/v0',
+    baseId: 'app123',
+    tableName: 'Catalog Table',
+    fields: null,
+    pageSize: 10
+  });
+
+  assert.equal(url.includes('fields%5B%5D='), false);
+  assert.equal(url.includes('pageSize=10'), true);
+});
+
+test('buildSchemaUrl points to Airtable metadata tables endpoint', () => {
+  const url = buildSchemaUrl({
+    schemaApiBase: 'https://api.airtable.com/v0/meta',
+    baseId: 'app123'
+  });
+
+  assert.equal(url, 'https://api.airtable.com/v0/meta/bases/app123/tables');
 });
 
 test('listCatalogFields paginates and returns mapped field names', async () => {
