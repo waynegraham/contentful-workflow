@@ -58,16 +58,9 @@ export async function listAirtableRecords(options = {}) {
       filterByFormula: options.filterByFormula
     });
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`
-      }
+    const payload = await airtableJsonRequest(url, {
+      apiKey
     });
-
-    const payload = await parseJson(response);
-    if (!response.ok) {
-      throw new Error(formatAirtableError(response.status, payload));
-    }
 
     const batch = Array.isArray(payload.records) ? payload.records : [];
     records.push(...batch);
@@ -104,16 +97,9 @@ export async function listAirtableTableFields(options = {}) {
   const schemaApiBase = normalizeSchemaApiBase(options.schemaApiBase || DEFAULT_SCHEMA_API_BASE);
 
   const url = buildSchemaUrl({ schemaApiBase, baseId });
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`
-    }
+  const payload = await airtableJsonRequest(url, {
+    apiKey
   });
-
-  const payload = await parseJson(response);
-  if (!response.ok) {
-    throw new Error(formatAirtableError(response.status, payload));
-  }
 
   const tables = Array.isArray(payload?.tables) ? payload.tables : [];
   const normalizedTableName = normalizeString(tableName);
@@ -142,6 +128,25 @@ export async function listAirtableTableFields(options = {}) {
   }
 
   return fields;
+}
+
+export async function updateAirtableRecord(options = {}) {
+  const apiKey = normalizeRequired(options.apiKey, 'AIRTABLE_API_KEY');
+  const baseId = normalizeRequired(options.baseId, 'AIRTABLE_BASE_ID');
+  const tableName = normalizeRequired(options.tableName, 'AIRTABLE_TABLE_NAME');
+  const recordId = normalizeRequired(options.recordId, 'recordId');
+  const fields = normalizeRecordFields(options.fields);
+  const apiBase = normalizeApiBase(options.apiBase || DEFAULT_API_BASE);
+  const typecast = options.typecast === true;
+
+  const url = buildRecordUrl({ apiBase, baseId, tableName, recordId });
+  const payload = await airtableJsonRequest(url, {
+    apiKey,
+    method: 'PATCH',
+    body: JSON.stringify({ fields, typecast })
+  });
+
+  return payload;
 }
 
 export function parseAirtableCliOptions(argv) {
@@ -234,6 +239,30 @@ export function buildSchemaUrl({ schemaApiBase, baseId }) {
   return `${trimmedBase}/bases/${encodedBaseId}/tables`;
 }
 
+export function buildRecordUrl({ apiBase, baseId, tableName, recordId }) {
+  const trimmedBase = normalizeApiBase(apiBase);
+  const encodedPath = `${encodeURIComponent(baseId)}/${encodeURIComponent(tableName)}/${encodeURIComponent(recordId)}`;
+  return `${trimmedBase}/${encodedPath}`;
+}
+
+async function airtableJsonRequest(url, { apiKey, method = 'GET', body } = {}) {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    body
+  });
+
+  const payload = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(formatAirtableError(response.status, payload));
+  }
+
+  return payload;
+}
+
 function formatAirtableError(status, payload) {
   const errorType = payload?.error?.type;
   const errorMessage = payload?.error?.message;
@@ -263,6 +292,13 @@ function normalizeRequired(value, envName) {
     throw new Error(`${envName} is required`);
   }
   return normalized;
+}
+
+function normalizeRecordFields(fields) {
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+    throw new Error('Airtable record update requires a fields object.');
+  }
+  return fields;
 }
 
 function normalizeApiBase(value) {

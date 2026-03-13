@@ -1,17 +1,20 @@
 # Contentful Workflow Importer
 
-Imports `CSV_PATH` into Contentful content type `your_contentful_content_type_id` in space `your_contentful_space_id`.
+Imports Airtable records directly into Contentful content type `your_contentful_content_type_id` in space `your_contentful_space_id`.
 
 ## What It Does
 - Inserts missing entries only (idempotent by `IAB Code` -> `iabCode`)
+- Default import scope is Airtable rows where `contentful_url` is empty
+- Optional redo mode reprocesses the full Airtable table and overwrites existing Contentful entries
 - Leaves created entries as drafts (no publish)
 - Validates required fields and enum constraints
+- Validates mapped Airtable fields against Airtable table schema before any import run
 - Auto-fills missing Arabic localized fields via the configured translation provider
 - Defers non-text/media fields
 - Produces per-run JSON reports in `reports/`
 
 ## Prerequisites
-- Node.js 18+
+- Node.js 24+
 - Contentful Management API token with access to:
   - Space: `your_contentful_space_id`
   - Environment: `master`
@@ -24,7 +27,7 @@ Imports `CSV_PATH` into Contentful content type `your_contentful_content_type_id
 
 ## Install
 ```bash
-npm install
+pnpm install
 ```
 
 ## Configuration
@@ -52,52 +55,69 @@ CLAUDE_MODEL=claude-3-5-haiku-latest
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=translategemma:latest
 
-# Local settings
-CSV_PATH=your_csv_file.csv
-MAPPING_PATH=your_mapping_file.json
-IIIF_MAPPING_PATH=your_iiif_mapping_file.json
-DEFAULT_LOCALE=en-US
-AR_LOCALE=ar
-
 # Airtable settings
 AIRTABLE_API_KEY=your_airtable_api_key
 AIRTABLE_BASE_ID=your_airtable_base_id
 AIRTABLE_TABLE_NAME=your_airtable_table_name
+AIRTABLE_CONTENTFUL_URL_FIELD=contentful_url
+
+# Local settings
+MAPPING_PATH=your_mapping_file.json
+IIIF_MAPPING_PATH=your_iiif_mapping_file.json
+DEFAULT_LOCALE=en-US
+AR_LOCALE=ar
 ```
 
 ## Commands
 
 ### Validate
-Checks mapping, CSV headers, Contentful content type, and locales.
+Checks mapping, Airtable schema, Airtable connectivity, Contentful content type, and locales.
 Shows a small live validation indicator unless progress is turned off.
 
 ```bash
-npm run validate
+pnpm run validate
 
 # optional progress control
 node src/import-cli.mjs validate --progress=off
+
+# optional cap while testing
+node src/import-cli.mjs validate --max 100
 ```
 
 ### Dry Run
 Performs full processing without writing entries.
+By default this only considers Airtable rows where `contentful_url` is empty.
 Shows a live status bar with rows, status counts, and ETA.
 
 ```bash
-npm run dry-run
+pnpm run dry-run
 
 # optional progress control
 node src/import-cli.mjs dry-run --progress=auto
+
+# optional cap while testing
+node src/import-cli.mjs dry-run --max 100
+
+# redo mode: process the full Airtable table and simulate overwrites
+node src/import-cli.mjs dry-run --redo
 ```
 
 ### Apply
 Creates missing entries as drafts.
+By default this only processes Airtable rows where `contentful_url` is empty and writes the new Contentful app URL back to Airtable.
 Shows a live status bar with rows, status counts, and ETA.
 
 ```bash
-npm run apply
+pnpm run apply
 
 # optional progress control
 node src/import-cli.mjs apply --progress=on
+
+# optional cap while testing
+node src/import-cli.mjs apply --max 100
+
+# redo mode: process the full Airtable table and overwrite existing Contentful entries
+node src/import-cli.mjs apply --redo
 ```
 
 ### Airtable List (Source Check)
@@ -105,10 +125,10 @@ Lists records from `AIRTABLE_TABLE_NAME` and prints these columns: `IAB Code`, `
 
 ```bash
 # tab-separated output
-npm run airtable:list
+pnpm run airtable:list
 
 # JSON output
-npm run airtable:list -- --json
+pnpm run airtable:list -- --json
 
 # limit and optional view/formula
 node src/airtable-list-cli.mjs --max 100 --view "Ready for Import"
@@ -120,13 +140,13 @@ Connects to Airtable directly, reads Airtable column names, reads Contentful con
 
 ```bash
 # writes config/airtable-contentful-map.json
-npm run airtable:map
+pnpm run airtable:map
 
 # print only to stdout
-npm run airtable:map -- --stdout-only --json
+pnpm run airtable:map -- --stdout-only --json
 
 # optional filters when scanning fallback records
-npm run airtable:map -- --view "Ready for Import" --sample-size 100
+pnpm run airtable:map -- --view "Ready for Import" --sample-size 100
 ```
 
 Notes:
@@ -144,16 +164,16 @@ Current checks:
 
 ```bash
 # console summary only
-npm run airtable:issues -- --max 200
+pnpm run airtable:issues -- --max 200
 
 # JSON output to stdout
-npm run airtable:issues -- --max 200 --json
+pnpm run airtable:issues -- --max 200 --json
 
 # write JSON report file in reports/
-npm run airtable:issues -- --write-report --max 200
+pnpm run airtable:issues -- --write-report --max 200
 
 # custom title length threshold
-npm run airtable:issues -- --title-max 255
+pnpm run airtable:issues -- --title-max 255
 ```
 
 ### Humanize Reports
@@ -161,13 +181,13 @@ Builds a markdown summary focused on actionable errors from generated JSON repor
 
 ```bash
 # default: latest import report only
-npm run humanize-reports
+pnpm run humanize-reports
 
 # include all import reports
-npm run humanize-reports -- --all
+pnpm run humanize-reports -- --all
 
 # optional custom output path
-npm run humanize-reports -- --all --output reports/human-readable-errors-all.md
+pnpm run humanize-reports -- --all --output reports/human-readable-errors-all.md
 ```
 
 ### Export IIIF (Published Content Cache)
@@ -175,13 +195,13 @@ Exports published entries from Contentful Delivery API as IIIF Presentation API 
 
 ```bash
 # incremental (default)
-npm run export-iiif
+pnpm run export-iiif
 
 # full rebuild
-npm run export-iiif:full
+pnpm run export-iiif:full
 
 # optional flags
-node src/export-iiif-cli.mjs --mode incremental --mapping config/iiif-mapping.json --output manifests
+pnpm src/export-iiif-cli.mjs --mode incremental --mapping config/iiif-mapping.json --output manifests
 ```
 
 Output files:
@@ -196,7 +216,10 @@ Output files:
 
 ## Import Rules
 - Unique key: `IAB Code` (`iabCode` in Contentful)
-- Existing entries: skipped
+- Default mode: only Airtable rows where `contentful_url` is empty are processed
+- Default mode existing entries: skipped
+- `--redo`: ignores `contentful_url`, processes the full Airtable table, and updates existing Contentful entries when `iabCode` matches
+- Successful `apply` writes the Contentful app URL into Airtable field `contentful_url` (or `AIRTABLE_CONTENTFUL_URL_FIELD`)
 - Date parsing:
   - `hijriDate` = text before `/`
   - `gregorianDate` = text after `/`
@@ -240,15 +263,15 @@ Recommended `Workflow Status` values:
 
 ### End-to-End Process
 1. Catalog editor enters English content in Airtable (`IAB Code`, title, description, and other mapped fields).
-2. Editor marks row `Ready for Import` only when required fields are complete.
-3. Import operator exports CSV from Airtable and runs:
+2. Import operator runs:
    - `npm run validate`
    - `npm run dry-run`
    - check `reports/import-<timestamp>.json` for:
      - `would_create` count is expected
      - no unexpected `skipped_missing_required` or `skipped_invalid_enum`
-4. If dry-run is clean, import operator runs `npm run apply`.
-5. Import operator updates Airtable rows to `Imported - Needs Arabic Review` and records `Imported At` (and optionally Contentful entry IDs).
+3. If dry-run is clean, import operator runs `npm run apply`.
+4. Successful applies write the Contentful entry URL back to Airtable `contentful_url`.
+5. Import operator updates Airtable rows to `Imported - Needs Arabic Review` and records `Imported At` if needed.
 6. Arabic reviewer opens draft entries in Contentful and manually reviews all Arabic fields generated by the importer.
 7. After corrections, reviewer marks the item `Arabic Reviewed` (in Airtable or a Contentful workflow field).
 8. Publisher performs final QA (EN + AR + taxonomy + media + links) and publishes only approved entries.
@@ -257,7 +280,8 @@ Recommended `Workflow Status` values:
 ### Review and Publish Guardrails
 - Do not publish directly after import; imported entries contain machine-generated Arabic that requires human review.
 - Treat `IAB Code` as immutable primary key. Changing it creates a new entry path.
-- This importer does not update existing entries. If content changes after import, edit directly in Contentful or use a separate update workflow.
+- Default mode does not update existing Contentful entries.
+- `--redo` updates existing Contentful entries matched by `iabCode`.
 - Keep a per-run report archive in `reports/` for audit and troubleshooting.
 
 ### Suggested QA Checklist Before Publish
@@ -280,7 +304,7 @@ Recommended `Workflow Status` values:
 Mapping is stored in:
 - `config/almadar-mapping.json`
 
-Use this file to add new CSV->Contentful field mappings without changing importer code.
+Use this file to add new Airtable->Contentful field mappings without changing importer code.
 
 IIIF mapping is stored in:
 - `config/iiif-mapping.json`
@@ -296,13 +320,16 @@ Each `dry-run` and `apply` writes:
 - `reports/import-<timestamp>.json`
 
 Human-readable error summaries:
-- `npm run humanize-reports` writes `reports/human-readable-errors.md` from the latest `import-*.json` file
-- `npm run humanize-reports -- --all` includes all `import-*.json` files
+- `pnpm run humanize-reports` writes `reports/human-readable-errors.md` from the latest `import-*.json` file
+- `pnpm run humanize-reports -- --all` includes all `import-*.json` files
 
 Row statuses include:
 - `would_create`
+- `would_update`
 - `created`
+- `updated`
 - `skipped_existing`
+- `skipped_linked`
 - `skipped_missing_required`
 - `skipped_invalid_enum`
 - `failed_translation`
@@ -312,7 +339,7 @@ Row statuses include:
 Generate a known-vulnerability report for dependency lockfiles:
 
 ```bash
-npm run security:osv
+pnpm run security:osv
 ```
 
 Output:
@@ -331,7 +358,6 @@ Notes:
 - `config/iiif-mapping.json` - IIIF field mapping and collection metadata
 - `docs/contentful-import-spec.md` - detailed technical spec
 - `docs/airtable-sop-template.md` - copy/paste SOP for Airtable intake, import ops, Arabic review, and publish workflow
-- `iab25-sample.csv` - sample source CSV
 
 ## Notes
 - `validate` does not call translation APIs.
@@ -360,12 +386,13 @@ Notes:
 - confirm `CONTENTFUL_CONTENT_TYPE_ID=alMadarCsv`.
 - compare `config/almadar-mapping.json` field IDs with Contentful field IDs.
 
-### CSV header mismatch errors:
-- verify headers match mapping strings exactly (including punctuation/trailing spaces).
-- if source CSV changed, update `config/almadar-mapping.json`.
+### Airtable mapped field mismatch errors:
+- verify Airtable field names match mapping strings exactly (including punctuation/trailing spaces).
+- verify `contentful_url` exists in Airtable, or override the field name with `AIRTABLE_CONTENTFUL_URL_FIELD`.
+- if Airtable schema changed, update `config/almadar-mapping.json`.
 
 ###  Too many rows skipped for invalid enum:
-- check CSV values for `category`, `gallery`, and `section`.
+- check Airtable values for `category`, `gallery`, and `section`.
 - values must match Contentful allowed values exactly (case-sensitive).
 
 ### Translation API errors / rate limits:
@@ -376,4 +403,4 @@ Notes:
 
 ### `apply` created nothing:
 - run `dry-run` first and inspect `reports/import-<timestamp>.json`.
-- rows may be skipped as existing (`iabCode` already present) or failing validations.
+- rows may be skipped as linked (`contentful_url` already present), existing (`iabCode` already present), or failing validations.

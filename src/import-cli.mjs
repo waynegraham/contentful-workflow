@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { listAirtableRecords, listAirtableTableFields, updateAirtableRecord } from './airtable-client.mjs';
 
 const MODE_VALIDATE = 'validate';
 const MODE_DRY_RUN = 'dry-run';
@@ -15,12 +16,13 @@ const NA_VALUES = new Set(['', 'n/a', 'na', 'null', '-']);
 let mode;
 let cliOptions;
 let mappingPath;
-let csvPath;
 let mapping;
-let csvRows;
 let env;
 let summary;
 let translationCache;
+let airtableFields;
+let airtableRecords;
+let processableRecords;
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
@@ -45,7 +47,7 @@ async function initializeCliState(args) {
   mode = args[0];
   if (!MODES.has(mode)) {
     console.error(
-      'Usage: node src/import-cli.mjs <validate|dry-run|apply> [--csv path] [--mapping path] [--progress auto|on|off]'
+      'Usage: node src/import-cli.mjs <validate|dry-run|apply> [--mapping path] [--progress auto|on|off] [--max N] [--redo]'
     );
     process.exit(1);
   }
@@ -57,16 +59,18 @@ async function initializeCliState(args) {
   }
 
   mappingPath = cliOptions.mapping || process.env.MAPPING_PATH || 'config/almadar-mapping.json';
-  csvPath = cliOptions.csv || process.env.CSV_PATH || 'iab25-sample.csv';
-
   mapping = readJson(mappingPath);
-  csvRows = await readCsv(csvPath);
 
   env = {
     spaceId: process.env.CONTENTFUL_SPACE_ID || mapping.spaceId,
     envId: process.env.CONTENTFUL_ENV_ID || mapping.environmentId || 'master',
     contentTypeId: process.env.CONTENTFUL_CONTENT_TYPE_ID || mapping.contentTypeId,
     managementToken: process.env.CONTENTFUL_MANAGEMENT_TOKEN,
+    airtableApiKey: process.env.AIRTABLE_API_KEY,
+    airtableBaseId: process.env.AIRTABLE_BASE_ID,
+    airtableTableName: process.env.AIRTABLE_TABLE_NAME,
+    airtableContentfulUrlField:
+      process.env.AIRTABLE_CONTENTFUL_URL_FIELD || mapping.airtable?.contentfulUrlField || 'contentful_url',
     translationProvider: String(
       process.env.TRANSLATION_PROVIDER || mapping.options?.translationProvider || 'openai'
     ).toLowerCase(),
@@ -82,17 +86,26 @@ async function initializeCliState(args) {
 
   summary = {
     mode,
-    csvPath,
     mappingPath,
+    redo: cliOptions.redo,
+    maxRecords: cliOptions.maxRecords ?? null,
     translation: {
       provider: env.translationProvider,
       model: env.translationModel
     },
+    airtable: {
+      baseId: env.airtableBaseId,
+      tableName: env.airtableTableName,
+      contentfulUrlField: env.airtableContentfulUrlField
+    },
     totals: {
-      rows: csvRows.length,
+      rows: 0,
       created: 0,
+      updated: 0,
       would_create: 0,
+      would_update: 0,
       skipped_existing: 0,
+      skipped_linked: 0,
       skipped_missing_required: 0,
       skipped_invalid_enum: 0,
       failed_validation: 0,
@@ -119,8 +132,30 @@ async function main() {
   validateProgress.step('Validating mapping');
   validateMappingShape(mapping);
 
-  validateProgress.step('Validating CSV headers');
-  validateCsvHeaders(mapping, csvRows);
+  validateProgress.step('Loading Airtable schema');
+  airtableFields = await listAirtableTableFields({
+    apiKey: env.airtableApiKey,
+    baseId: env.airtableBaseId,
+    tableName: env.airtableTableName
+  });
+
+  validateProgress.step('Validating Airtable fields');
+  validateAirtableFields(mapping, airtableFields, env.airtableContentfulUrlField);
+
+  validateProgress.step('Loading Airtable records');
+  airtableRecords = await listAirtableRecords({
+    apiKey: env.airtableApiKey,
+    baseId: env.airtableBaseId,
+    tableName: env.airtableTableName,
+    fields: null,
+    maxRecords: cliOptions.maxRecords
+  });
+  processableRecords = selectProcessableRecords(airtableRecords, {
+    mode,
+    redo: cliOptions.redo,
+    contentfulUrlField: env.airtableContentfulUrlField
+  });
+  summary.totals.rows = processableRecords.length;
 
   validateProgress.step('Connecting to Contentful');
   const cma = await createContentfulClient(env.managementToken);
@@ -135,7 +170,8 @@ async function main() {
 
   if (mode === MODE_VALIDATE) {
     console.log('Validation passed.');
-    console.log(`Rows: ${csvRows.length}`);
+    console.log(`Airtable records loaded: ${airtableRecords.length}`);
+    console.log(`Rows to process: ${processableRecords.length}`);
     console.log(`Content type: ${contentType.sys.id}`);
     console.log(`Locales: ${env.defaultLocale}, ${env.arLocale}`);
     return;
@@ -143,22 +179,25 @@ async function main() {
 
   const rowProgress = createRowProgress({
     mode,
-    totalRows: csvRows.length,
+    totalRows: processableRecords.length,
     progressMode: cliOptions.progress,
     stream: process.stdout
   });
   rowProgress.start();
 
-  for (let i = 0; i < csvRows.length; i += 1) {
-    const rowNumber = i + 2;
-    const row = normalizeRow(csvRows[i]);
+  for (let i = 0; i < processableRecords.length; i += 1) {
+    const airtableRecord = processableRecords[i];
+    const rowNumber = i + 1;
+    const row = normalizeRow(airtableRecord.fields || {});
 
     const status = await processRow({
+      airtableRecord,
       row,
       rowNumber,
       mapping,
       env,
       mode,
+      redo: cliOptions.redo,
       environment,
       contentType,
       enumMap,
@@ -176,13 +215,8 @@ async function main() {
 }
 
 function parseCliOptions(argv) {
-  const options = { progress: 'auto' };
+  const options = { progress: 'auto', redo: false };
   for (let i = 0; i < argv.length; i += 1) {
-    if (argv[i] === '--csv' && argv[i + 1]) {
-      options.csv = argv[i + 1];
-      i += 1;
-      continue;
-    }
     if (argv[i] === '--mapping' && argv[i + 1]) {
       options.mapping = argv[i + 1];
       i += 1;
@@ -195,6 +229,19 @@ function parseCliOptions(argv) {
     if (argv[i] === '--progress' && argv[i + 1]) {
       options.progress = String(argv[i + 1]).toLowerCase();
       i += 1;
+      continue;
+    }
+    if (argv[i] === '--max' && argv[i + 1]) {
+      options.maxRecords = Number.parseInt(argv[i + 1], 10);
+      i += 1;
+      continue;
+    }
+    if (argv[i].startsWith('--max=')) {
+      options.maxRecords = Number.parseInt(argv[i].slice('--max='.length), 10);
+      continue;
+    }
+    if (argv[i] === '--redo') {
+      options.redo = true;
     }
   }
   return options;
@@ -282,8 +329,11 @@ function createRowProgress({ mode, totalRows, progressMode, stream }) {
   function buildCounts(totals) {
     const short = [
       `would:${totals.would_create || 0}`,
+      `wupd:${totals.would_update || 0}`,
       `created:${totals.created || 0}`,
+      `updated:${totals.updated || 0}`,
       `exist:${totals.skipped_existing || 0}`,
+      `linked:${totals.skipped_linked || 0}`,
       `req:${totals.skipped_missing_required || 0}`,
       `enum:${totals.skipped_invalid_enum || 0}`,
       `tr:${totals.failed_translation || 0}`,
@@ -361,19 +411,18 @@ function readJson(filePath) {
   return JSON.parse(raw);
 }
 
-async function readCsv(filePath) {
-  const csvParseModule = await import('csv-parse/sync');
-  const parseCsv = csvParseModule.parse;
-  const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
-  return parseCsv(raw, {
-    columns: true,
-    skip_empty_lines: true,
-    relax_column_count: true
-  });
-}
-
 function validateEnvForMode(currentEnv, currentMode, currentMapping) {
-  const required = ['spaceId', 'envId', 'contentTypeId', 'managementToken', 'defaultLocale', 'arLocale'];
+  const required = [
+    'spaceId',
+    'envId',
+    'contentTypeId',
+    'managementToken',
+    'airtableApiKey',
+    'airtableBaseId',
+    'airtableTableName',
+    'defaultLocale',
+    'arLocale'
+  ];
   const missing = required.filter((k) => !currentEnv[k]);
   if (missing.length > 0) {
     throw new Error(`Missing required env/config values: ${missing.join(', ')}`);
@@ -416,13 +465,13 @@ function validateMappingShape(currentMapping) {
   }
 }
 
-function validateCsvHeaders(currentMapping, rows) {
-  if (rows.length === 0) {
-    throw new Error('CSV has no data rows.');
+function validateAirtableFields(currentMapping, fields, contentfulUrlField) {
+  if (!Array.isArray(fields) || fields.length === 0) {
+    throw new Error('Airtable schema returned no fields.');
   }
 
-  const headers = new Set(Object.keys(rows[0]));
-  const requiredHeaders = new Set();
+  const headers = new Set(fields.map((field) => field.name).filter(Boolean));
+  const requiredHeaders = new Set([contentfulUrlField]);
 
   for (const field of currentMapping.fieldMappings) {
     const source = field.source || {};
@@ -439,8 +488,19 @@ function validateCsvHeaders(currentMapping, rows) {
   }
 
   if (missing.length > 0) {
-    throw new Error(`CSV missing mapped header(s): ${missing.join(', ')}`);
+    throw new Error(`Airtable missing mapped field(s): ${missing.join(', ')}`);
   }
+}
+
+function selectProcessableRecords(records, { mode: currentMode, redo, contentfulUrlField }) {
+  if (currentMode === MODE_VALIDATE || redo) {
+    return records;
+  }
+
+  return records.filter((record) => {
+    const fields = record?.fields || {};
+    return !hasValue(norm(fields[contentfulUrlField]));
+  });
 }
 
 async function createContentfulClient(token) {
@@ -473,6 +533,15 @@ async function loadContentfulContext(client, currentEnv) {
   return { environment, contentType, localesByCode, enumMap };
 }
 
+async function updateContentfulEntry(entry, fields) {
+  entry.fields = fields;
+  return entry.update();
+}
+
+function buildContentfulEntryUrl({ spaceId, envId, entryId }) {
+  return `https://app.contentful.com/spaces/${encodeURIComponent(spaceId)}/environments/${encodeURIComponent(envId)}/entries/${encodeURIComponent(entryId)}`;
+}
+
 function ensureLocale(localesByCode, code) {
   if (!localesByCode.has(code)) {
     throw new Error(`Locale not found in Contentful environment: ${code}`);
@@ -481,11 +550,13 @@ function ensureLocale(localesByCode, code) {
 
 async function processRow(ctx) {
   const {
+    airtableRecord,
     row,
     rowNumber,
     mapping,
     env: currentEnv,
     mode: currentMode,
+    redo,
     environment,
     contentType,
     enumMap,
@@ -495,10 +566,12 @@ async function processRow(ctx) {
   const uniqueSourceColumn = mapping.idempotency?.sourceColumn || 'IAB Code';
   const uniqueFieldId = mapping.idempotency?.uniqueFieldId || 'iabCode';
   const iabCode = norm(row[uniqueSourceColumn]);
+  const contentfulUrl = norm(row[currentEnv.airtableContentfulUrlField]);
 
   if (!iabCode) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode: null,
       status: 'skipped_missing_required',
       missingRequired: [uniqueSourceColumn],
@@ -511,10 +584,23 @@ async function processRow(ctx) {
     [`fields.${uniqueFieldId}`]: iabCode,
     limit: 1
   });
+  const existingEntry = existing.items[0] || null;
 
-  if (existing.items.length > 0) {
+  if (!redo && hasValue(contentfulUrl)) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
+      iabCode,
+      status: 'skipped_linked',
+      missingRequired: [],
+      errors: []
+    };
+  }
+
+  if (!redo && existingEntry) {
+    return {
+      rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
       status: 'skipped_existing',
       missingRequired: [],
@@ -539,6 +625,7 @@ async function processRow(ctx) {
   if (buildResult.enumErrors.length > 0) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
       status: 'skipped_invalid_enum',
       missingRequired: [],
@@ -549,6 +636,7 @@ async function processRow(ctx) {
   if (buildResult.missingRequired.length > 0) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
       status: 'skipped_missing_required',
       missingRequired: buildResult.missingRequired,
@@ -559,6 +647,7 @@ async function processRow(ctx) {
   if (buildResult.requiredTranslationFailed) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
       status: 'failed_translation',
       missingRequired: [],
@@ -569,19 +658,41 @@ async function processRow(ctx) {
   if (currentMode === MODE_DRY_RUN) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
-      status: 'would_create',
+      status: existingEntry ? 'would_update' : 'would_create',
       missingRequired: [],
       errors: buildResult.errors
     };
   }
 
   try {
-    const entry = await environment.createEntry(contentType.sys.id, { fields: buildResult.fields });
+    const entry = existingEntry
+      ? await updateContentfulEntry(existingEntry, buildResult.fields)
+      : await environment.createEntry(contentType.sys.id, { fields: buildResult.fields });
+
+    if (!existingEntry || redo) {
+      const contentfulEntryUrl = buildContentfulEntryUrl({
+        spaceId: currentEnv.spaceId,
+        envId: currentEnv.envId,
+        entryId: entry.sys.id
+      });
+      await updateAirtableRecord({
+        apiKey: currentEnv.airtableApiKey,
+        baseId: currentEnv.airtableBaseId,
+        tableName: currentEnv.airtableTableName,
+        recordId: airtableRecord.id,
+        fields: {
+          [currentEnv.airtableContentfulUrlField]: contentfulEntryUrl
+        }
+      });
+    }
+
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
-      status: 'created',
+      status: existingEntry ? 'updated' : 'created',
       entryId: entry.sys.id,
       missingRequired: [],
       errors: buildResult.errors
@@ -589,6 +700,7 @@ async function processRow(ctx) {
   } catch (error) {
     return {
       rowNumber,
+      airtableRecordId: airtableRecord?.id || null,
       iabCode,
       status: 'failed_contentful',
       missingRequired: [],
@@ -1071,11 +1183,15 @@ function writeReport(currentSummary) {
 
 function printSummary(currentSummary, reportPath) {
   console.log(`Mode: ${currentSummary.mode}`);
+  console.log(`Redo: ${currentSummary.redo ? 'yes' : 'no'}`);
   console.log(`Translation provider/model: ${currentSummary.translation.provider}/${currentSummary.translation.model}`);
   console.log(`Rows: ${currentSummary.totals.rows}`);
   console.log(`Would create: ${currentSummary.totals.would_create}`);
+  console.log(`Would update: ${currentSummary.totals.would_update}`);
   console.log(`Created: ${currentSummary.totals.created}`);
+  console.log(`Updated: ${currentSummary.totals.updated}`);
   console.log(`Skipped existing: ${currentSummary.totals.skipped_existing}`);
+  console.log(`Skipped linked: ${currentSummary.totals.skipped_linked}`);
   console.log(`Skipped missing required: ${currentSummary.totals.skipped_missing_required}`);
   console.log(`Skipped invalid enum: ${currentSummary.totals.skipped_invalid_enum}`);
   console.log(`Failed translation: ${currentSummary.totals.failed_translation}`);
@@ -1156,6 +1272,7 @@ function findDuplicates(values) {
 
 export {
   applyTransform,
+  buildContentfulEntryUrl,
   extractFootnoteNumbers,
   findDuplicates,
   formatFootnotes,
@@ -1165,10 +1282,11 @@ export {
   normalizeDatePart,
   parseCliOptions,
   resolveTranslationModel,
+  selectProcessableRecords,
   shouldTranslateAr,
   splitDateParts,
   toTitleCase,
-  validateCsvHeaders,
+  validateAirtableFields,
   validateEnvForMode,
   validateMappingShape
 };

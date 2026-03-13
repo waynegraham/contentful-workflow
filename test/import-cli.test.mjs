@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   applyTransform,
+  buildContentfulEntryUrl,
   extractFootnoteNumbers,
   findDuplicates,
   formatFootnotes,
@@ -10,26 +11,29 @@ import {
   norm,
   parseCliOptions,
   resolveTranslationModel,
+  selectProcessableRecords,
   shouldTranslateAr,
   splitDateParts,
-  validateCsvHeaders,
+  validateAirtableFields,
   validateEnvForMode,
   validateMappingShape
 } from '../src/import-cli.mjs';
 
 test('parseCliOptions parses supported flags', () => {
   const options = parseCliOptions([
-    '--csv',
-    'data.csv',
     '--mapping',
     'config/mapping.json',
-    '--progress=ON'
+    '--progress=ON',
+    '--max',
+    '50',
+    '--redo'
   ]);
 
   assert.deepEqual(options, {
-    csv: 'data.csv',
     mapping: 'config/mapping.json',
-    progress: 'on'
+    progress: 'on',
+    maxRecords: 50,
+    redo: true
   });
 });
 
@@ -67,7 +71,7 @@ test('validateMappingShape fails when fieldIds are duplicated', () => {
   );
 });
 
-test('validateCsvHeaders fails when mapped headers are missing', () => {
+test('validateAirtableFields fails when mapped Airtable fields are missing', () => {
   const mapping = {
     fieldMappings: [
       {
@@ -76,9 +80,12 @@ test('validateCsvHeaders fails when mapped headers are missing', () => {
       }
     ]
   };
-  const rows = [{ Title: 'Sample title' }];
+  const fields = [{ name: 'Title' }];
 
-  assert.throws(() => validateCsvHeaders(mapping, rows), /CSV missing mapped header/);
+  assert.throws(
+    () => validateAirtableFields(mapping, fields, 'contentful_url'),
+    /Airtable missing mapped field/
+  );
 });
 
 test('shouldTranslateAr only returns true for translate mode and missing Arabic value', () => {
@@ -93,6 +100,9 @@ test('validateEnvForMode only requires provider key for non-validate modes when 
     envId: 'master',
     contentTypeId: 'alMadarCsv',
     managementToken: 'token',
+    airtableApiKey: 'airtable-token',
+    airtableBaseId: 'app123',
+    airtableTableName: 'Catalog',
     defaultLocale: 'en-US',
     arLocale: 'ar',
     translationProvider: 'openai',
@@ -114,9 +124,49 @@ test('findDuplicates returns each duplicated value once', () => {
   assert.deepEqual(duplicates.sort(), ['a', 'b']);
 });
 
+test('selectProcessableRecords keeps only rows without contentful_url by default', () => {
+  const records = [
+    { id: 'rec1', fields: { 'IAB Code': 'A-1', contentful_url: '' } },
+    { id: 'rec2', fields: { 'IAB Code': 'A-2', contentful_url: 'https://app.contentful.com/...' } }
+  ];
+
+  const filtered = selectProcessableRecords(records, {
+    mode: 'apply',
+    redo: false,
+    contentfulUrlField: 'contentful_url'
+  });
+
+  assert.deepEqual(filtered.map((record) => record.id), ['rec1']);
+});
+
+test('selectProcessableRecords keeps all rows in redo mode', () => {
+  const records = [
+    { id: 'rec1', fields: { contentful_url: '' } },
+    { id: 'rec2', fields: { contentful_url: 'https://app.contentful.com/...' } }
+  ];
+
+  const filtered = selectProcessableRecords(records, {
+    mode: 'apply',
+    redo: true,
+    contentfulUrlField: 'contentful_url'
+  });
+
+  assert.equal(filtered.length, 2);
+});
+
 test('resolveTranslationModel uses explicit model when provided', () => {
   const model = resolveTranslationModel('openai', 'custom-model');
   assert.equal(model, 'custom-model');
+});
+
+test('buildContentfulEntryUrl builds standard Contentful app entry links', () => {
+  const url = buildContentfulEntryUrl({
+    spaceId: 'space123',
+    envId: 'master',
+    entryId: 'entry456'
+  });
+
+  assert.equal(url, 'https://app.contentful.com/spaces/space123/environments/master/entries/entry456');
 });
 
 test('extractFootnoteNumbers returns footnote ids from numbered lines', () => {

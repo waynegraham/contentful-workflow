@@ -11,9 +11,6 @@ importers:
       contentful-management:
         specifier: ^11.72.1
         version: 11.72.1
-      csv-parse:
-        specifier: ^5.6.0
-        version: 5.6.0
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
@@ -55,9 +52,6 @@ packages:
   contentful-sdk-core@9.4.4:
     resolution: {integrity: sha512-61MfMyMU23dqCEOTHaHGys16tK2D0tbDe67GPcl6JkfbCcnhtmgTMLUbBnimW5wQse1mNmwS7lK2BNsz+rlFjA==}
     engines: {node: '>=18'}
-
-  csv-parse@5.6.0:
-    resolution: {integrity: sha512-l3nz3euub2QMg5ouu5U09Ew9Wf6/wQ8I++ch1loQ0ljmzhmfZYrH9fflS22i/PQEvsPvxCwxgz5q7UB8K1JO4Q==}
 
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
@@ -229,8 +223,6 @@ snapshots:
       qs: 6.15.0
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu': 4.59.0
-
-  csv-parse@5.6.0: {}
 
   delayed-stream@1.0.0: {}
 

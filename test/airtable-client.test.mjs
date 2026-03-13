@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildRecordUrl,
   buildSchemaUrl,
   buildRecordsUrl,
   listCatalogFields,
-  parseAirtableCliOptions
+  parseAirtableCliOptions,
+  updateAirtableRecord
 } from '../src/airtable-client.mjs';
 
 test('parseAirtableCliOptions reads supported flags', () => {
@@ -67,6 +69,17 @@ test('buildSchemaUrl points to Airtable metadata tables endpoint', () => {
   });
 
   assert.equal(url, 'https://api.airtable.com/v0/meta/bases/app123/tables');
+});
+
+test('buildRecordUrl points to a single Airtable record endpoint', () => {
+  const url = buildRecordUrl({
+    apiBase: 'https://api.airtable.com/v0',
+    baseId: 'app123',
+    tableName: 'Catalog Table',
+    recordId: 'rec456'
+  });
+
+  assert.equal(url, 'https://api.airtable.com/v0/app123/Catalog%20Table/rec456');
 });
 
 test('listCatalogFields paginates and returns mapped field names', async () => {
@@ -138,6 +151,43 @@ test('listCatalogFields paginates and returns mapped field names', async () => {
       titleOfObject: 'Map',
       description: 'Folded map'
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('updateAirtableRecord patches a record field payload', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.airtable.com/v0/app123/Catalog%20Table/rec456');
+    assert.equal(options.method, 'PATCH');
+    assert.equal(options.headers.Authorization, 'Bearer key');
+    assert.deepEqual(JSON.parse(options.body), {
+      fields: { contentful_url: 'https://app.contentful.com/spaces/space/environments/master/entries/entry' },
+      typecast: false
+    });
+
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return { id: 'rec456' };
+      }
+    };
+  };
+
+  try {
+    const result = await updateAirtableRecord({
+      apiKey: 'key',
+      baseId: 'app123',
+      tableName: 'Catalog Table',
+      recordId: 'rec456',
+      fields: {
+        contentful_url: 'https://app.contentful.com/spaces/space/environments/master/entries/entry'
+      }
+    });
+
+    assert.deepEqual(result, { id: 'rec456' });
   } finally {
     globalThis.fetch = originalFetch;
   }

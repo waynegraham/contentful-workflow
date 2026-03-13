@@ -216,7 +216,7 @@ function suggestAction(detailText, pathText) {
   }
 
   if (detail.includes('required')) {
-    return 'Populate the missing required value in the CSV or mapping before rerunning import.';
+    return 'Populate the missing required value in Airtable or mapping before rerunning import.';
   }
 
   if (detail.includes('invalid')) {
