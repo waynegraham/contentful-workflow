@@ -135,6 +135,30 @@ node src/airtable-list-cli.mjs --max 100 --view "Ready for Import"
 node src/airtable-list-cli.mjs --filter-by-formula "{Ready for Import}=1"
 ```
 
+### Airtable Export (Full Local Snapshot)
+Pulls the full Airtable table, including all record fields and table schema, into a local JSON file for migration debugging.
+
+```bash
+# write a timestamped snapshot into reports/
+pnpm run airtable:export
+
+# custom output path
+pnpm run airtable:export -- --output tmp/airtable-debug.json
+
+# print to stdout instead of writing a file
+pnpm run airtable:export -- --stdout-only
+
+# optional filters while debugging
+pnpm run airtable:export -- --view "Ready for Import"
+pnpm run airtable:export -- --filter-by-formula "{Ready for Import}=1"
+pnpm run airtable:export -- --max 100
+```
+
+Output includes:
+- Airtable base/table metadata and active filters
+- Full table field schema from Airtable metadata API
+- Raw Airtable records exactly as returned by the records API
+
 ### Airtable -> Contentful Mapping Scaffold (Migration Step 1)
 Connects to Airtable directly, reads Airtable column names, reads Contentful content type fields, and generates a mapping scaffold you can edit while field IDs are still changing.
 

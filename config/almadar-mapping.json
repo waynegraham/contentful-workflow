@@ -21,7 +21,7 @@
   },
   "requiredFieldPolicy": {
     "logMissingRequired": true,
-    "requiredFieldIds": ["iabCode", "title", "description", "section"],
+    "requiredFieldIds": ["iabCode", "title", "section"],
     "skipRowIfMissing": true
   },
   "fieldMappings": [
@@ -101,7 +101,7 @@
       }
     },
     {
-      "fieldId": "inscription",
+      "fieldId": "inscriptions",
       "type": "Text",
       "localized": true,
       "source": { "en-US": "Inscriptions" }
@@ -143,6 +143,12 @@
       "transform": "split_to_array",
       "arrayDelimiters": [",", ";"],
       "arrayItemCase": "title"
+    },
+    {
+      "fieldId": "section",
+      "type": "Symbol",
+      "localized": false,
+      "source": { "en-US": "Section" }
     }
   ],
   "deferredCsvColumns": [

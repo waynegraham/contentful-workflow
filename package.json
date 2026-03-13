@@ -8,6 +8,7 @@
     "validate": "node src/import-cli.mjs validate",
     "dry-run": "node src/import-cli.mjs dry-run",
     "apply": "node src/import-cli.mjs apply",
+    "airtable:export": "node src/airtable-export-cli.mjs",
     "airtable:list": "node src/airtable-list-cli.mjs",
     "airtable:issues": "node src/airtable-issues-cli.mjs",
     "airtable:map": "node src/airtable-map-cli.mjs",
