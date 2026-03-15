@@ -38,6 +38,12 @@
       "source": { "en-US": "Title of Object" }
     },
     {
+      "fieldId": "edition",
+      "type": "Integer",
+      "localized": false,
+      "staticValue": 2025
+    },
+    {
       "fieldId": "origin",
       "type": "Symbol",
       "localized": true,

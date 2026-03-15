@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   applyTransform,
   buildContentfulEntryUrl,
+  buildFields,
   extractFootnoteNumbers,
   findDuplicates,
   formatFootnotes,
@@ -59,6 +60,44 @@ test('applyTransform split_to_array splits by delimiters and title-cases', () =>
   });
 
   assert.deepEqual(transformed, ['Paper', 'Cloth', 'Vellum']);
+});
+
+test('buildFields applies staticValue mappings', async () => {
+  const result = await buildFields({
+    row: { 'IAB Code': 'A-1' },
+    mapping: {
+      fieldMappings: [
+        {
+          fieldId: 'edition',
+          type: 'Integer',
+          localized: false,
+          staticValue: 2025
+        }
+      ]
+    },
+    contentType: {
+      fields: [
+        {
+          id: 'edition',
+          required: false
+        }
+      ]
+    },
+    enumMap: new Map(),
+    defaultLocale: 'en-US',
+    arLocale: 'ar',
+    translationProvider: 'openai',
+    translationModel: 'gpt-4.1-mini',
+    translationApiKey: null,
+    ollamaBaseUrl: null,
+    translationCache: new Map()
+  });
+
+  assert.deepEqual(result.fields, {
+    edition: {
+      'en-US': 2025
+    }
+  });
 });
 
 test('validateMappingShape fails when fieldIds are duplicated', () => {
@@ -174,12 +213,32 @@ test('extractFootnoteNumbers returns footnote ids from numbered lines', () => {
   assert.deepEqual(Array.from(numbers).sort(), ['39', '40']);
 });
 
+test('extractFootnoteNumbers supports bold markdown footnote numbers', () => {
+  const numbers = extractFootnoteNumbers('**84.**Stephen Markel\n**90.**Another source');
+  assert.deepEqual(Array.from(numbers).sort(), ['84', '90']);
+});
+
+test('extractFootnoteNumbers supports bold-number markers with trailing period', () => {
+  const numbers = extractFootnoteNumbers('**161**. The Metropolitan Museum of Art');
+  assert.deepEqual(Array.from(numbers).sort(), ['161']);
+});
+
 test('formatFootnotes wraps each footnote number with anchor span id', () => {
   const formatted = formatFootnotes('39.See source one\n40. See source two');
   assert.equal(
     formatted,
-    '<span id="fn39">39.</span> See source one\n<span id="fn40">40.</span> See source two'
+    '<span class="footnote-ref" id="ref39">39</span> See source one\n<span class="footnote-ref" id="ref40">40</span> See source two'
   );
+});
+
+test('formatFootnotes supports bold markdown footnote numbers', () => {
+  const formatted = formatFootnotes('**84.**Stephen Markel');
+  assert.equal(formatted, '<span class="footnote-ref" id="ref84">84</span> Stephen Markel');
+});
+
+test('formatFootnotes supports bold-number markers with trailing period', () => {
+  const formatted = formatFootnotes('**161**. The Metropolitan Museum of Art');
+  assert.equal(formatted, '<span class="footnote-ref" id="ref161">161</span> The Metropolitan Museum of Art');
 });
 
 test('linkDescriptionFootnotes converts inline numeric markers to superscript links', () => {
@@ -189,6 +248,14 @@ test('linkDescriptionFootnotes converts inline numeric markers to superscript li
   );
   assert.equal(
     linked,
-    '...around the world.<sup><a href="#fn39">39</a></sup>\n\nSecond sentence.'
+    '...around the world.<sup><a href="#ref39">39</a></sup>\n\nSecond sentence.'
   );
+});
+
+test('linkDescriptionFootnotes converts bold markdown markers to superscript links', () => {
+  const linked = linkDescriptionFootnotes(
+    '...was thought to have protective properties.**84**',
+    new Set(['84'])
+  );
+  assert.equal(linked, '...was thought to have protective properties.<sup><a href="#ref84">84</a></sup>');
 });

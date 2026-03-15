@@ -743,9 +743,15 @@ async function buildFields(ctx) {
 
     const enSource = fieldMap.source?.[defaultLocale];
     const arSource = fieldMap.source?.[arLocale];
-
-    const rawEn = enSource ? norm(row[enSource]) : null;
-    const rawAr = arSource ? norm(row[arSource]) : null;
+    const staticValue = fieldMap.staticValue;
+    const rawEn =
+      staticValue && typeof staticValue === 'object' && !Array.isArray(staticValue)
+        ? (staticValue[defaultLocale] ?? (enSource ? norm(row[enSource]) : null))
+        : (staticValue ?? (enSource ? norm(row[enSource]) : null));
+    const rawAr =
+      staticValue && typeof staticValue === 'object' && !Array.isArray(staticValue)
+        ? (staticValue[arLocale] ?? (arSource ? norm(row[arSource]) : null))
+        : (arSource ? norm(row[arSource]) : null);
 
     let enValue = applyTransform(rawEn, fieldMap);
     let arValue = applyTransform(rawAr, fieldMap);
@@ -896,18 +902,25 @@ function applyTransform(input, fieldMap) {
 
 function extractFootnoteNumbers(text) {
   const numbers = new Set();
-  const matcher = /(^|\n)\s*(\d+)\.\s*/gm;
+  const matcher = /(^|\n)\s*(?:\*\*(\d+)\*\*\.\s*|\*\*(\d+)\.\*\*\s*|(\d+)\.\s*)/gm;
   for (const match of String(text).matchAll(matcher)) {
-    numbers.add(match[2]);
+    const number = match[2] || match[3] || match[4];
+    if (number) {
+      numbers.add(number);
+    }
   }
   return numbers;
 }
 
 function formatFootnotes(text) {
-  return String(text).replace(/(^|\n)\s*(\d+)\.\s*/gm, (full, linePrefix, number) => {
-    const prefix = linePrefix || '';
-    return `${prefix}<span id="fn${number}">${number}.</span> `;
-  });
+  return String(text).replace(
+    /(^|\n)\s*(?:\*\*(\d+)\*\*\.\s*|\*\*(\d+)\.\*\*\s*|(\d+)\.\s*)/gm,
+    (full, linePrefix, numberA, numberB, numberC) => {
+      const number = numberA || numberB || numberC;
+      const prefix = linePrefix || '';
+      return `${prefix}<span class="footnote-ref" id="ref${number}">${number}</span> `;
+    }
+  );
 }
 
 function linkDescriptionFootnotes(description, availableFootnotes) {
@@ -917,9 +930,13 @@ function linkDescriptionFootnotes(description, availableFootnotes) {
 
   const sorted = Array.from(availableFootnotes).sort((a, b) => Number(b) - Number(a));
   const numbersPattern = sorted.map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const boldMarkerPattern = new RegExp(`(\\*\\*(${numbersPattern})\\*\\*)(?=(?:\\s|$))`, 'g');
+  const linked = String(description).replace(boldMarkerPattern, (full, _bold, number) => {
+    return `<sup><a href="#ref${number}">${number}</a></sup>`;
+  });
   const markerPattern = new RegExp(`([.!?,;:)"'\\]»])\\s*(${numbersPattern})(?=(?:\\s|$))`, 'g');
-  return String(description).replace(markerPattern, (full, punctuation, number) => {
-    return `${punctuation}<sup><a href="#fn${number}">${number}</a></sup>`;
+  return linked.replace(markerPattern, (full, punctuation, number) => {
+    return `${punctuation}<sup><a href="#ref${number}">${number}</a></sup>`;
   });
 }
 
@@ -1273,6 +1290,7 @@ function findDuplicates(values) {
 export {
   applyTransform,
   buildContentfulEntryUrl,
+  buildFields,
   extractFootnoteNumbers,
   findDuplicates,
   formatFootnotes,
