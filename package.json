@@ -11,6 +11,7 @@
     "airtable:export": "node src/airtable-export-cli.mjs",
     "airtable:list": "node src/airtable-list-cli.mjs",
     "airtable:issues": "node src/airtable-issues-cli.mjs",
+    "airtable:long-titles": "node src/airtable-long-titles-cli.mjs",
     "airtable:map": "node src/airtable-map-cli.mjs",
     "humanize-reports": "node src/humanize-reports.mjs",
     "export-iiif": "node src/export-iiif-cli.mjs",

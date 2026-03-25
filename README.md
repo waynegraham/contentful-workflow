@@ -200,6 +200,28 @@ pnpm run airtable:issues -- --write-report --max 200
 pnpm run airtable:issues -- --title-max 255
 ```
 
+### Airtable Long Titles Report
+Finds records whose `Title of Object` exceeds a configurable minimum length and writes a CSV with:
+- `IAB Code`
+- full title
+- suggested short title
+
+The suggested short title currently uses the text before the first comma when a comma exists, which matches titles where a short label is followed by bibliographic citation details.
+
+```bash
+# write a timestamped CSV into reports/
+pnpm run airtable:long-titles -- --write-report
+
+# custom minimum title length (default: 150)
+pnpm run airtable:long-titles -- --title-min 150
+
+# custom output path
+pnpm run airtable:long-titles -- --output reports/long-titles.csv
+
+# print CSV to stdout
+pnpm run airtable:long-titles -- --stdout-only
+```
+
 ### Humanize Reports
 Builds a markdown summary focused on actionable errors from generated JSON reports.
 
